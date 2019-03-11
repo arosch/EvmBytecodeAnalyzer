@@ -47,6 +47,51 @@ struct Program {
         BasicBlock* nextFallthrough;
 
         explicit BasicBlock(unsigned i):index(i),nextJump(nullptr),nextFallthrough(nullptr) { }
+
+        unsigned printBB(ofstream& ostrm,unsigned first,unsigned prev) const{
+            ostrm <<"\tsubgraph cluster"<<index<<" {\n";
+            ostrm <<"\t\tlabel=\"bb"<<index<<"\";\n";
+
+            unsigned i = first;
+            for(const auto& instr:content){
+                ostrm <<"\t\t"<<i++<<"[label=\""<<instr.mnemonic<<"\"];\n";
+            }
+            ostrm <<"\t\t";
+            if(prev!=0)
+                ostrm<<prev<<" -> ";
+            for(unsigned j=first;j<i;j++){
+                ostrm<<j;
+                if(j!=i-1)
+                    ostrm <<" -> ";
+                else
+                    ostrm <<";";
+            }
+            ostrm <<'\n';
+            ostrm <<"\t}\n\n";
+
+            unsigned next=i;
+            if(nextFallthrough!=nullptr)
+                next=nextFallthrough->printBB(ostrm,next,i-1);
+            if(nextJump!=nullptr)
+                next=nextJump->printBB(ostrm,next,i-1);
+            return next;
+        }
+
+        void printBBdot(const string& fout)const{
+            if (ofstream ostrm{fout, ios::binary}) {
+                ostrm << "digraph G{\n";
+                ostrm << "\tnode[shape=box];\n";
+
+                if(content.empty()){
+                    cerr<<"found empty bb!\n";
+                    return;
+                }
+
+                printBB(ostrm,0,0);
+
+                ostrm << "}";
+            }
+        }
     };
 
     struct Norm1{
@@ -233,6 +278,7 @@ int main() {
     if(!n1.creation.empty()){
         Program::Norm2 ncreate2 = p.normalize2(n1.creation);
         auto start = p.normalize3(ncreate2);
+        start->printBBdot(fout);
     }
 
     return 0;
