@@ -9,10 +9,9 @@
 #include <unordered_map>
 #include <stdexcept>
 #include <set>
+#include <memory>
 
 using namespace std;
-
-//creation vs runtime
 
 struct Program {
 
@@ -47,14 +46,7 @@ struct Program {
         BasicBlock* nextJump;
         BasicBlock* nextFallthrough;
 
-        BasicBlock(unsigned i):index(i),nextJump(nullptr),nextFallthrough(nullptr) { }
-
-        void printBB(){
-            int i=0;
-            for(const auto& e:content){
-                e.print();
-            }
-        }
+        explicit BasicBlock(unsigned i):index(i),nextJump(nullptr),nextFallthrough(nullptr) { }
     };
 
     struct Norm1{
@@ -165,7 +157,7 @@ struct Program {
     }
 
     ///build BB by finding JUMP/JUMPI/REVERT/RETURN/STOP
-    void normalize3(const Norm2& n){
+    unique_ptr<BasicBlock> normalize3(const Norm2& n){
         vector<pair<BasicBlock*,unsigned>> jumpTo;
         unordered_map<unsigned,BasicBlock*> jumpDst;
 
@@ -220,13 +212,7 @@ struct Program {
             else
                 cerr<<"jumptarget not found"<<'\n';
         }
-
-
-        (void)bbidx++;
-        (void)head;
-        (void)curr;
-        (void)jumpTo;
-        (void)jumpDst;
+        return make_unique<BasicBlock>(head);
     }
 
     ///print the bytecode
@@ -240,12 +226,13 @@ struct Program {
 
 int main() {
     const string filename = "/home/alex/CLionProjects/EvmBytecodeAnalyzer/input/test.bin";
+    const string fout = "/home/alex/CLionProjects/EvmBytecodeAnalyzer/graph.gv";
 
     Program p;
     Program::Norm1 n1 = p.normalize1(filename);
     if(!n1.creation.empty()){
         Program::Norm2 ncreate2 = p.normalize2(n1.creation);
-        p.normalize3(ncreate2);
+        auto start = p.normalize3(ncreate2);
     }
 
     return 0;

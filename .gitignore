@@ -41,4 +41,7 @@ CMakeLists.txt
 *.exe
 *.out
 
+# Output
+graph.gv
+
 .directory
