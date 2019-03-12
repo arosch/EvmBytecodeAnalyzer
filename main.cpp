@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <set>
 #include <memory>
+#include <map>
 
 using namespace std;
 
@@ -48,36 +49,56 @@ struct Program {
 
         explicit BasicBlock(unsigned i):index(i),nextJump(nullptr),nextFallthrough(nullptr) { }
 
-        unsigned printBB(ofstream& ostrm,unsigned first,unsigned prev) const{
-            ostrm <<"\tsubgraph cluster"<<index<<" {\n";
-            ostrm <<"\t\tlabel=\"bb"<<index<<"\";\n";
+        unsigned printBB(ofstream& ostrm,const unsigned first,const unsigned prev,map<unsigned,pair<unsigned,unsigned>>& bbFirstNode) const{
+            unsigned next;
+            unsigned last;
 
-            unsigned i = first;
-            for(const auto& instr:content){
-                ostrm <<"\t\t"<<i++<<"[label=\""<<instr.mnemonic<<"\"];\n";
-            }
-            ostrm <<"\t\t";
-            if(prev!=0)
-                ostrm<<prev<<" -> ";
-            for(unsigned j=first;j<i;j++){
-                ostrm<<j;
-                if(j!=i-1)
-                    ostrm <<" -> ";
-                else
-                    ostrm <<";";
-            }
-            ostrm <<'\n';
-            ostrm <<"\t}\n\n";
+            auto search = bbFirstNode.find(index);
+            if(search==bbFirstNode.end()){
+                //bb is not yet written
 
-            unsigned next=i;
+                ostrm <<"\tsubgraph cluster"<<index<<" {\n";
+                ostrm <<"\t\tlabel=\"bb"<<index<<"\";\n";
+
+                unsigned i = first;
+                for(const auto& instr:content){
+                    ostrm <<"\t\t"<<i++<<"[label=\""<<instr.mnemonic<<"\"];\n";
+                }
+                ostrm <<"\t\t";
+                if(prev!=0)
+                    ostrm<<prev<<" -> ";
+                for(unsigned j=first;j<i;j++){
+                    ostrm<<j;
+                    if(j!=i-1)
+                        ostrm <<" -> ";
+                    else
+                        ostrm <<";";
+                }
+                ostrm <<'\n';
+                ostrm <<"\t}\n\n";
+
+                next=i;
+                last=i-1;
+                //if bb referenced again -> store first and last node value
+                bbFirstNode.emplace(index,make_pair(first,i-1));
+            } else {
+                //bb was written previously
+                next=search->second.first;
+                last=search->second.second;
+
+                ostrm <<'\t'<<prev<<" -> "<<next<<";\n";
+            }
+
             if(nextFallthrough!=nullptr)
-                next=nextFallthrough->printBB(ostrm,next,i-1);
+                next=nextFallthrough->printBB(ostrm,next,last,bbFirstNode);
             if(nextJump!=nullptr)
-                next=nextJump->printBB(ostrm,next,i-1);
+                next=nextJump->printBB(ostrm,next,last,bbFirstNode);
             return next;
+
+
         }
 
-        void printBBdot(const string& fout)const{
+        void printBBdot(const string& fout) const{
             if (ofstream ostrm{fout, ios::binary}) {
                 ostrm << "digraph G{\n";
                 ostrm << "\tnode[shape=box];\n";
@@ -87,7 +108,8 @@ struct Program {
                     return;
                 }
 
-                printBB(ostrm,0,0);
+                map<unsigned,pair<unsigned,unsigned>> bbFirstNode;
+                printBB(ostrm,0,0,bbFirstNode);
                 ostrm << "}";
             }
         }
