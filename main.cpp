@@ -339,8 +339,25 @@ struct Program {
         const set<uint8_t> bbendInstr = {0x00,0xf3,0xfd};
 
         for(const auto& i:n.instr){
-            if(i.opcode == 0x56 || i.opcode == 0x57){
-                //JUMP | JUMPI
+            if(i.opcode == 0x56){
+                //JUMP
+                succ = new BasicBlock{bbidx++};
+
+                curr->content.push_back(i);
+                //curr->nextFallthrough = succ;
+
+                //previous instr contains jump target & map curr bb to this jumptarget
+                const auto& jumptarget = n.instr.at(instrIdx-1).getValue();
+                jumpTo.emplace_back(curr,n.jumptable.at(jumptarget));
+
+                //successor bb is the jump destination for key
+                jumpDst.emplace(instrIdx+1,succ);
+
+                //the new bb is now current
+                curr = succ;
+
+            } else if(i.opcode == 0x57) {
+                //JUMPI
                 succ = new BasicBlock{bbidx++};
 
                 curr->content.push_back(i);
