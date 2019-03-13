@@ -31,9 +31,15 @@ struct Program {
 
         Instruction(uint8_t val, string m, uint8_t d, uint8_t a):opcode(val),mnemonic(m),delta(d),alpha(a) { }
 
-        uint8_t getValue() const {
-            //TODO proper getValue not just from first byte
-            return payload.at(0);
+        uint64_t getPayloadUll() const {
+
+            if(payload.size()>8)
+                cerr<<"request for unsigned long long value from :"<<payload.size()<<" bytes...";
+
+            uint64_t value = 0;
+            for(const auto& v:payload)
+                value = (value<<8)+v;
+            return value;
         }
 
         void print() const {
@@ -347,8 +353,8 @@ struct Program {
 
     ///build BB by finding JUMP/JUMPI/REVERT/RETURN/STOP
     unique_ptr<BasicBlock> normalize3(const Norm2& n){
-        vector<pair<BasicBlock*,unsigned>> jumpTo;
-        unordered_map<unsigned,BasicBlock*> jumpDst;
+        vector<pair<BasicBlock*,uint64_t>> jumpTo;
+        unordered_map<uint64_t,BasicBlock*> jumpDst;
 
         unsigned bbidx=0;
         unsigned instrIdx=0;
@@ -369,7 +375,7 @@ struct Program {
                 //curr->nextFallthrough = succ;
 
                 //previous instr contains jump target & map curr bb to this jumptarget
-                const auto& jumptarget = n.instr.at(instrIdx-1).getValue();
+                const auto& jumptarget = n.instr.at(instrIdx - 1).getPayloadUll();
                 jumpTo.emplace_back(curr,n.jumptable.at(jumptarget));
 
                 //successor bb is the jump destination for key
@@ -386,7 +392,7 @@ struct Program {
                 curr->nextFallthrough = succ;
 
                 //previous instr contains jump target & map curr bb to this jumptarget
-                const auto& jumptarget = n.instr.at(instrIdx-1).getValue();
+                const auto& jumptarget = n.instr.at(instrIdx - 1).getPayloadUll();
                 jumpTo.emplace_back(curr,n.jumptable.at(jumptarget));
 
                 //successor bb is the jump destination for key
@@ -444,10 +450,9 @@ int main() {
         start->printBBdot(fout);
     }
     Program::Norm2 nrun2 = p.normalize2(n1.run);
-    nrun2.print();
+    //nrun2.print();
     auto startr = p.normalize3(nrun2);
     startr->printBBdot(foutr);
-
 
     return 0;
 }
