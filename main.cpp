@@ -26,13 +26,12 @@ struct Program {
         /// the number of elements pushed onto the stack
         const uint8_t alpha;
 
-        /// if payload !emtpy then it is a push instruction
+        /// ...
         bitset<256> pushVal;
 
         Instruction(uint8_t val, string m, uint8_t d, uint8_t a):opcode(val),mnemonic(m),delta(d),alpha(a),pushVal(bitset<256>(0)) { }
 
         uint64_t getPushValUll() const {
-
             try {
                 return pushVal.to_ullong();
             } catch (const std::overflow_error& e) {
@@ -41,9 +40,33 @@ struct Program {
             }
         }
 
-        void print() const {
-            cout << mnemonic << '\n';
+        void processStack(stack<bitset<256>>& stack) const{
+
+            if(0x60<=opcode && opcode<=0x7f){
+                stack.push(pushVal);
+                return;
+            }
+
+            const unsigned pop = delta;
+            const unsigned push = alpha;
+
+            vector<bitset<256>> stackItem;
+
+            //pop
+            cout<<"popping "<<pop<<" | ";
+            for(unsigned i=0;i<pop;i++){
+                stackItem.push_back(stack.top());
+                stack.pop();
+            }
+
+            //push
+            cout<<"pushing "<<push<<"\n";
+            for(unsigned i=0;i<push;i++){
+                stack.emplace(0);
+            }
+
         }
+
     };
 
     struct BasicBlock{
@@ -128,7 +151,7 @@ struct Program {
 
     struct Norm2{
         vector<Instruction> instr;
-        unordered_map<unsigned,unsigned> jumptable;
+        unordered_map<uint64_t,uint64_t> jumptable;
 
         void print(){
             int j =0;
@@ -310,6 +333,15 @@ struct Program {
         auxdata = move(aux);
     }
 
+    uint64_t getTopUll(stack<bitset<256>>& stack) const {
+        try {
+            return stack.top().to_ullong();
+        } catch (const std::overflow_error& e) {
+            cerr<<"request for unsigned long long value from: "<<stack.top()<<"...\n";
+            return 0;
+        }
+    }
+
     ///reads the given evm bytecode, and converts the hex chars to respective int value,
     Norm1 normalize1(const string& filename){
         if (ifstream istrm{filename, ios::binary}) {
@@ -333,7 +365,13 @@ struct Program {
 
         for(unsigned idx=0;idx<bytes.size();idx++){
             const auto& opc = bytes.at(idx);
-            Instruction instr = instrs.at(opc);
+            Instruction instr = [&]{
+                try{
+                    return instrs.at(opc);
+                } catch(const out_of_range& e) {
+                    cerr << e.what() <<'\n';
+                }
+            }();
             if(0x60<=opc && opc<=0x7f){
                 //PUSH1 = 0x60 .. PUSH32 = 0x7f
                 const uint8_t num = opc-0x5f;
@@ -353,6 +391,8 @@ struct Program {
 
     ///build BB by finding JUMP/JUMPI/REVERT/RETURN/STOP
     unique_ptr<BasicBlock> normalize3(const Norm2& n){
+        stack<bitset<256>> stack;
+
         vector<pair<BasicBlock*,uint64_t>> jumpTo;
         unordered_map<uint64_t,BasicBlock*> jumpDst;
 
@@ -375,8 +415,17 @@ struct Program {
                 //curr->nextFallthrough = succ;
 
                 //previous instr contains jump target & map curr bb to this jumptarget
-                const auto& jumptarget = n.instr.at(instrIdx - 1).getPushValUll();
-                jumpTo.emplace_back(curr,n.jumptable.at(jumptarget));
+                const uint64_t jumptarget = [&]{
+                    uint64_t oldTarget=0;
+                    try{
+                        oldTarget = getTopUll(stack);
+                        return n.jumptable.at(oldTarget);
+                    } catch(const out_of_range& e) {
+                        cerr << "Could not find a JUMPDEST at: "<<oldTarget <<'\n';
+
+                    }
+                }();
+                jumpTo.emplace_back(curr,jumptarget);
 
                 //successor bb is the jump destination for key
                 jumpDst.emplace(instrIdx+1,succ);
@@ -392,7 +441,7 @@ struct Program {
                 curr->nextFallthrough = succ;
 
                 //previous instr contains jump target & map curr bb to this jumptarget
-                const auto& jumptarget = n.instr.at(instrIdx - 1).getPushValUll();
+                const auto& jumptarget = getTopUll(stack);
                 jumpTo.emplace_back(curr,n.jumptable.at(jumptarget));
 
                 //successor bb is the jump destination for key
@@ -412,8 +461,11 @@ struct Program {
                 //the new bb is now current
                 curr = succ;
 
-            } else
+            } else {
+
                 curr->content.push_back(i);
+            }
+            i.processStack(stack);
             instrIdx++;
         }
 
@@ -440,19 +492,22 @@ int main() {
     const string filename = "/home/alex/CLionProjects/EvmBytecodeAnalyzer/input/test.bin";
     const string fout = "/home/alex/CLionProjects/EvmBytecodeAnalyzer/output/graph.gv";
     const string foutr = "/home/alex/CLionProjects/EvmBytecodeAnalyzer/output/graph2.gv";
-
-    Program p;
-    Program::Norm1 n1 = p.normalize1(filename);
-    if(!n1.creation.empty()){
-        Program::Norm2 ncreate2 = p.normalize2(n1.creation);
-        //ncreate2.print();
-        auto start = p.normalize3(ncreate2);
-        start->printBBdot(fout);
+    try{
+        Program p;
+        Program::Norm1 n1 = p.normalize1(filename);
+        if(!n1.creation.empty()){
+            Program::Norm2 ncreate2 = p.normalize2(n1.creation);
+            //ncreate2.print();
+            auto start = p.normalize3(ncreate2);
+            start->printBBdot(fout);
+        }
+        Program::Norm2 nrun2 = p.normalize2(n1.run);
+        //nrun2.print();
+        auto startr = p.normalize3(nrun2);
+        startr->printBBdot(foutr);
+    } catch(const exception& e){
+        return EXIT_FAILURE;
     }
-    Program::Norm2 nrun2 = p.normalize2(n1.run);
-    //nrun2.print();
-    auto startr = p.normalize3(nrun2);
-    startr->printBBdot(foutr);
 
     return 0;
 }
