@@ -27,19 +27,18 @@ struct Program {
         const uint8_t alpha;
 
         /// if payload !emtpy then it is a push instruction
-        vector<uint8_t> payload;
+        bitset<256> pushVal;
 
-        Instruction(uint8_t val, string m, uint8_t d, uint8_t a):opcode(val),mnemonic(m),delta(d),alpha(a) { }
+        Instruction(uint8_t val, string m, uint8_t d, uint8_t a):opcode(val),mnemonic(m),delta(d),alpha(a),pushVal(bitset<256>(0)) { }
 
-        uint64_t getPayloadUll() const {
+        uint64_t getPushValUll() const {
 
-            if(payload.size()>8)
-                cerr<<"request for unsigned long long value from :"<<payload.size()<<" bytes...";
-
-            uint64_t value = 0;
-            for(const auto& v:payload)
-                value = (value<<8)+v;
-            return value;
+            try {
+                return pushVal.to_ullong();
+            } catch (const std::overflow_error& e) {
+                cerr<<"request for unsigned long long value from: "<<mnemonic<<"...\n";
+                return 0;
+            }
         }
 
         void print() const {
@@ -338,8 +337,9 @@ struct Program {
             if(0x60<=opc && opc<=0x7f){
                 //PUSH1 = 0x60 .. PUSH32 = 0x7f
                 const uint8_t num = opc-0x5f;
-                for(unsigned j=1;j<=num;j++)
-                    instr.payload.emplace_back(bytes.at(idx+j));
+                for(unsigned j=1;j<=num;j++){
+                    instr.pushVal = (instr.pushVal<<8) | bitset<256>(bytes.at(idx+j));
+                }
                 idx+=num;
                 pc+=num;
             } else if(opc==0x5b){
@@ -375,7 +375,7 @@ struct Program {
                 //curr->nextFallthrough = succ;
 
                 //previous instr contains jump target & map curr bb to this jumptarget
-                const auto& jumptarget = n.instr.at(instrIdx - 1).getPayloadUll();
+                const auto& jumptarget = n.instr.at(instrIdx - 1).getPushValUll();
                 jumpTo.emplace_back(curr,n.jumptable.at(jumptarget));
 
                 //successor bb is the jump destination for key
@@ -392,7 +392,7 @@ struct Program {
                 curr->nextFallthrough = succ;
 
                 //previous instr contains jump target & map curr bb to this jumptarget
-                const auto& jumptarget = n.instr.at(instrIdx - 1).getPayloadUll();
+                const auto& jumptarget = n.instr.at(instrIdx - 1).getPushValUll();
                 jumpTo.emplace_back(curr,n.jumptable.at(jumptarget));
 
                 //successor bb is the jump destination for key
