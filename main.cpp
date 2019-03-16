@@ -93,6 +93,17 @@ struct Program {
 
         explicit BasicBlock(unsigned i):index(i),nextJump(nullptr),nextFallthrough(nullptr) { }
 
+        void setFallthrough(BasicBlock* bb) {
+            if(nextFallthrough!=nullptr) throw logic_error("Falsely attempting to assign fallthrough bb");
+            nextFallthrough=bb;
+        }
+
+        void setJump(BasicBlock* bb) {
+            if(nextJump!=nullptr) throw logic_error("Falsely attempting to assign jump bb");
+            nextJump=bb;
+        }
+
+
         ///only JUMPI has a fallthrough
         bool needsFallthrough() const{
             return content.back().opcode == 0x57;
@@ -109,7 +120,7 @@ struct Program {
         }
 
 
-        bool hastJump() const{
+        bool hasJump() const{
             return nextJump!=nullptr;
         }
 
@@ -163,9 +174,9 @@ struct Program {
                 ostrm <<'\t'<<prev<<" -> "<<next<<";\n";
             }
 
-            if(nextFallthrough!=nullptr)
+            if(hasFallthrough())
                 next=nextFallthrough->printBB(ostrm,next,last,bbFirstNode);
-            if(nextJump!=nullptr)
+            if(hasJump())
                 next=nextJump->printBB(ostrm,next,last,bbFirstNode);
             return next;
 
@@ -455,7 +466,7 @@ struct Program {
             }
         }();
 
-        bb->nextJump = [&]{
+        bb->setJump([&]{
             uint64_t oldTarget=0;
             try{
                 oldTarget = getTopUll(stack);
@@ -464,7 +475,7 @@ struct Program {
                 cerr << "Could not find a JUMPDEST at: "<<oldTarget<<" for BB"<<bb->index<<'\n';
                 throw e;
             }
-        }();
+        }());
 
         bb->content.back().processStack(stack);
 
@@ -502,7 +513,7 @@ struct Program {
                 auto succ = new BasicBlock(bbIdx++);
                 jumpDst.emplace(instrIdx,succ);
                 if(curr->needsFallthrough())
-                    curr->nextFallthrough = succ;
+                    curr->setFallthrough(succ);
                 curr = succ;
             }
         }
