@@ -10,21 +10,6 @@ using namespace instr;
 
 void Instruction::processStack(stack<bitset<256>>& stack) const{
 
-    if(0x90<=opcode_old && opcode_old<=0x9f){
-        vector<bitset<256>> swapItem;
-        for(unsigned i=0;i<2;i++){
-            swapItem.push_back(stack.top());
-            stack.pop();
-        }
-        //swap first with last element
-        iter_swap(swapItem.begin(),swapItem.rbegin());
-        //push back onto the stack
-        for(auto it=swapItem.rbegin();it!=swapItem.rend();it++){
-            stack.push(*it);
-        }
-        return;
-    }
-
     const unsigned pop = delta;
     const unsigned push = alpha;
 
@@ -53,6 +38,20 @@ void Push::processStack(stack<bitset<256>>& stack) const{
 
 bitset<256> Push::getPushValue() const{
     return pushValue;
+}
+
+void Swap::processStack(stack<bitset<256>>& stack) const{
+    vector<bitset<256>> swapItem;
+    for(unsigned i=0;i<2;i++){
+        swapItem.push_back(stack.top());
+        stack.pop();
+    }
+    //swap first with last element
+    iter_swap(swapItem.begin(),swapItem.rbegin());
+    //push back onto the stack
+    for(auto it=swapItem.rbegin();it!=swapItem.rend();it++){
+        stack.push(*it);
+    }
 }
 
 const map<uint8_t,tuple<string,uint8_t,uint8_t>> Instruction::instrMap = {

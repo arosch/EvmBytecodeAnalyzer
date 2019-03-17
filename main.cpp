@@ -51,7 +51,7 @@ struct Program {
         string s(2,'\0');
         while(istrm.read(&s[0], 2)) {
             const auto opc = (uint8_t) stoi(s, nullptr, 16);
-            if(opc == 0xfe)
+            if(opc == Instruction::Opcode::INVALID)
                 return;
             bytes.push_back(opc);
         }
@@ -90,9 +90,9 @@ struct Program {
         for(unsigned idx=0;idx<bytes.size();idx++){
             const auto& opc = bytes.at(idx);
 
-            if(0x60<=opc && opc<=0x7f){
-                //PUSH1 = 0x60 .. PUSH32 = 0x7f
-                const uint8_t num = opc-0x5f;
+            if(Instruction::Opcode::PUSH1<=opc && opc<=Instruction::Opcode::PUSH32){
+
+                const uint8_t num = opc - (Instruction::Opcode::PUSH1-1);
                 bitset<256> t(0);
                 for(unsigned j=1;j<=num;j++){
                     t = (t<<8) | bitset<256>(bytes.at(idx+j));
@@ -102,10 +102,14 @@ struct Program {
 
                 idx+=num;
                 pushCount+=num;
+            } else if(Instruction::Opcode::SWAP1<=opc && opc<=Instruction::Opcode::SWAP16) {
+
+                n2.instrs.push_back(make_unique<Swap>(opc));
+
             } else {
                 n2.instrs.push_back(make_unique<Instruction>(opc));
 
-                if(opc==0x5b){
+                if(opc==Instruction::Opcode::JUMPDEST){
                     //JUMPDEST = 0x5b
                     n2.jumptable.emplace(idx,idx-pushCount);
                 }
@@ -131,10 +135,14 @@ struct Program {
         auto curr = head.get();
         jumpDst.emplace(instrIdx,curr);
 
-        const set<uint8_t> bbendInstr = {0x00,0x56,0x57,0xf3,0xfd};
+        const set<uint8_t> bbendInstr = {Instruction::Opcode::STOP,
+                                         Instruction::Opcode::JUMP,
+                                         Instruction::Opcode::JUMPI,
+                                         Instruction::Opcode::RETURN,
+                                         Instruction::Opcode::REVERT};
 
         for(auto it=n.instrs.begin();it!=n.instrs.end();it++){
-            const auto opc = it->get()->getOpcodeOld();
+            const auto opc = (*it)->getOpcode();
             curr->addInstruction(move(*it));
             instrIdx++;
 

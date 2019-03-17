@@ -18,7 +18,7 @@ namespace instr {
 
         static const map<uint8_t,tuple<string,uint8_t,uint8_t>> instrMap;
 
-        enum class Opcode:uint8_t{
+        enum Opcode:uint8_t{
             STOP=0x00,
             ADD=0x01,
             MUL=0x02,
@@ -164,11 +164,11 @@ namespace instr {
             }
         }()) { }
 
-        Instruction(uint8_t opc, tuple<string,uint8_t,uint8_t> instr):opcode_old(opc),mnemonic(get<0>(instr)),delta(get<1>(instr)),alpha(get<2>(instr)) { }
+        Instruction(uint8_t opc, tuple<string,uint8_t,uint8_t> instr):opcode(static_cast<Opcode>(opc)),mnemonic(get<0>(instr)),delta(get<1>(instr)),alpha(get<2>(instr)) { }
 
         Instruction(const Instruction&) = delete;
 
-        virtual uint8_t getOpcodeOld() const { return opcode_old;}
+        virtual uint8_t getOpcode() const { return opcode;}
         virtual string getMnemonic() const { return mnemonic;}
         virtual uint8_t getAlpha() const { return alpha;}
         virtual uint8_t getDelta() const { return delta;}
@@ -177,10 +177,8 @@ namespace instr {
         virtual bitset<256> getPushValue() const;
 
     private:
-        Opcode opc;
-
         /// the hex value of the instruction
-        const uint8_t opcode_old;
+        const Opcode opcode;
         /// ...
         const string mnemonic;
         /// the number of elements popped from the stack
@@ -206,6 +204,15 @@ namespace instr {
         static const uint8_t delta = 0;
         static const uint8_t alpha = 1;
         bitset<256> pushValue;
+    };
+
+    class Swap:public Instruction{
+    public:
+        explicit Swap(uint8_t opc):Instruction(opc) { }
+
+        Swap(const Swap&) = delete;
+
+        void processStack(stack<bitset<256>>& stack) const override;
     };
 
 }

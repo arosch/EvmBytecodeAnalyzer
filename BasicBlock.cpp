@@ -19,12 +19,12 @@ void BasicBlock::setJump(BasicBlock* bb) {
 }
 
 bool BasicBlock::needsFallthrough() const{
-    return content.back()->getOpcodeOld() == 0x57;
+    return content.back()->getOpcode() == Instruction::Opcode::JUMPI;
 }
 
 bool BasicBlock::needsJump() const{
-    const auto& opc = content.back()->getOpcodeOld();
-    return opc == 0x56 || opc == 0x57;
+    const auto& opc = content.back()->getOpcode();
+    return opc == Instruction::Opcode::JUMP || opc == Instruction::Opcode::JUMPI;
 }
 
 bool BasicBlock::hasFallthrough() const{
