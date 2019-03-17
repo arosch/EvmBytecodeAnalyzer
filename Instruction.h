@@ -16,7 +16,7 @@ namespace instr {
     class Instruction{
     public:
 
-        static const map<uint8_t,Instruction> instrMap;
+        static const map<uint8_t,tuple<string,uint8_t,uint8_t>> instrMap;
 
         enum class Opcode:uint8_t{
             STOP=0x00,
@@ -156,24 +156,17 @@ namespace instr {
             SELFDESTRUCT=0xff
         };
 
-
-
-        explicit Instruction(uint8_t opc):opcode_old(opc){
+        explicit Instruction(uint8_t opc):Instruction(opc, [&]{
             try{
-                const auto& instrValues = instrMap.at(opc);
-                opcode_old=instrValues.getOpcodeOld();
-                mnemonic=instrValues.getMnemonic();
-                alpha=instrValues.getAlpha();
-                delta= instrValues.getDelta();
-            }catch(const out_of_range& e) {
+                return instrMap.at(opc);
+            } catch(const out_of_range& e) {
                 throw out_of_range("Couldn't find an instruction with the specified opcode");
             }
-        }
+        }()) { }
 
-        Instruction(uint8_t val, string m, uint8_t d, uint8_t a):opcode_old(val),mnemonic(move(m)),delta(d),alpha(a),opc(
-                static_cast<Opcode>(val)) { }
+        Instruction(uint8_t opc, tuple<string,uint8_t,uint8_t> instr):opcode_old(opc),mnemonic(get<0>(instr)),delta(get<1>(instr)),alpha(get<2>(instr)) { }
 
-        Instruction(const Instruction&) = default;
+        Instruction(const Instruction&) = delete;
 
         virtual uint8_t getOpcodeOld() const { return opcode_old;}
         virtual string getMnemonic() const { return mnemonic;}
@@ -187,13 +180,13 @@ namespace instr {
         Opcode opc;
 
         /// the hex value of the instruction
-        uint8_t opcode_old;
+        const uint8_t opcode_old;
         /// ...
-        string mnemonic;
+        const string mnemonic;
         /// the number of elements popped from the stack
-        uint8_t delta;
+        const uint8_t delta;
         /// the number of elements pushed onto the stack
-        uint8_t alpha;
+        const uint8_t alpha;
     };
 
     class Push:public Instruction{
@@ -201,15 +194,17 @@ namespace instr {
 
         explicit Push(uint8_t opc, bitset<256> pV):Instruction(opc), pushValue(pV){  }
 
-        void processStack(stack<bitset<256>>& stack) const override;
-        bitset<256> getPushValue() const override;
+        Push(const Push&) = delete;
 
+        void processStack(stack<bitset<256>>& stack) const override;
+
+        bitset<256> getPushValue() const override;
         uint8_t getAlpha() const override{ return alpha;}
         uint8_t getDelta() const override{ return delta;}
 
     private:
-        const uint8_t delta = 0;
-        const uint8_t alpha = 1;
+        static const uint8_t delta = 0;
+        static const uint8_t alpha = 1;
         bitset<256> pushValue;
     };
 

@@ -25,6 +25,8 @@ namespace bb {
 
         explicit BasicBlock(unsigned i):index(i),nextJump(nullptr),nextFallthrough(nullptr) { }
 
+        BasicBlock(const BasicBlock&) = delete;
+
         void setFallthrough(BasicBlock* bb);
 
         void setJump(BasicBlock* bb);
