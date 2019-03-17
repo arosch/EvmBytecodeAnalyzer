@@ -12,193 +12,14 @@
 #include <memory>
 #include <map>
 
+#include "BasicBlock.h"
+#include "Instruction.h"
+
 using namespace std;
+using namespace instr;
+using namespace bb;
 
 struct Program {
-
-    struct Instruction{
-        /// the hex value of the instruction
-        const uint8_t opcode;
-        /// ...
-        const string mnemonic;
-        /// the number of elements popped from the stack
-        const uint8_t delta;
-        /// the number of elements pushed onto the stack
-        const uint8_t alpha;
-
-        /// ...
-        bitset<256> pushVal;
-
-        Instruction(uint8_t val, string m, uint8_t d, uint8_t a):opcode(val),mnemonic(m),delta(d),alpha(a),pushVal(bitset<256>(0)) { }
-
-        Instruction(const Instruction&) = default;
-
-        /*uint64_t getPushValUll() const {
-            try {
-                return pushVal.to_ullong();
-            } catch (const std::overflow_error& e) {
-                cerr<<"request for unsigned long long value from: "<<mnemonic<<"...\n";
-                return 0;
-            }
-        }*/
-
-        void processStack(stack<bitset<256>>& stack) const{
-
-            if(0x60<=opcode && opcode<=0x7f){
-                stack.push(pushVal);
-                return;
-            }
-
-            if(opcode==0x90){
-                vector<bitset<256>> swapItem;
-                for(unsigned i=0;i<2;i++){
-                    swapItem.push_back(stack.top());
-                    stack.pop();
-                }
-
-                //for(int i=swapItem.size()-1;i>=0;i--){
-                //    stack.push(swapItem.at(i));
-                //}
-                for(const auto& s:swapItem){
-                    stack.push(s);
-                }
-                return;
-            }
-
-            const unsigned pop = delta;
-            const unsigned push = alpha;
-
-            vector<bitset<256>> stackItem;
-
-            //pop
-            for(unsigned i=0;i<pop;i++){
-                stackItem.push_back(stack.top());
-                stack.pop();
-            }
-
-            //push
-            for(unsigned i=0;i<push;i++){
-                stack.emplace(0);
-            }
-
-        }
-
-    };
-
-    struct BasicBlock{
-        const unsigned index;
-        vector<Instruction> content;
-        BasicBlock* nextJump;
-        BasicBlock* nextFallthrough;
-
-        explicit BasicBlock(unsigned i):index(i),nextJump(nullptr),nextFallthrough(nullptr) { }
-
-        void setFallthrough(BasicBlock* bb) {
-            if(nextFallthrough!=nullptr) throw logic_error("Falsely attempting to assign fallthrough bb");
-            nextFallthrough=bb;
-        }
-
-        void setJump(BasicBlock* bb) {
-            if(nextJump!=nullptr) throw logic_error("Falsely attempting to assign jump bb");
-            nextJump=bb;
-        }
-
-
-        ///only JUMPI has a fallthrough
-        bool needsFallthrough() const{
-            return content.back().opcode == 0x57;
-        }
-
-        ///tests if BasicBlock needs a next Jump
-        bool needsJump() const{
-            const auto& opc = content.back().opcode;
-            return opc == 0x56 || opc == 0x57;
-        }
-
-        bool hasFallthrough() const{
-            return nextFallthrough!=nullptr;
-        }
-
-
-        bool hasJump() const{
-            return nextJump!=nullptr;
-        }
-
-        ///Process the stack for all instructions, but the last
-        stack<bitset<256>> processStackExceptLast(stack<bitset<256>> stack) const{
-            const auto num = content.size()-1;
-            for(unsigned i=0;i<num;i++){
-                content[i].processStack(stack);
-            }
-            return stack;
-        }
-
-
-        unsigned printBB(ofstream& ostrm,const unsigned first,const unsigned prev,map<unsigned,pair<unsigned,unsigned>>& bbFirstNode) const{
-            unsigned next;
-            unsigned last;
-
-            auto search = bbFirstNode.find(index);
-            if(search==bbFirstNode.end()){
-                //bb is not yet written
-
-                ostrm <<"\tsubgraph cluster"<<index<<" {\n";
-                ostrm <<"\t\tlabel=\"bb"<<index<<"\";\n";
-
-                unsigned i = first;
-                for(const auto& instr:content){
-                    ostrm <<"\t\t"<<i++<<"[label=\""<<instr.mnemonic<<"\"];\n";
-                }
-                ostrm <<"\t\t";
-                if(prev!=0)
-                    ostrm<<prev<<" -> ";
-                for(unsigned j=first;j<i;j++){
-                    ostrm<<j;
-                    if(j!=i-1)
-                        ostrm <<" -> ";
-                    else
-                        ostrm <<";";
-                }
-                ostrm <<'\n';
-                ostrm <<"\t}\n\n";
-
-                next=i;
-                last=i-1;
-                //if bb referenced again -> store first and last node value
-                bbFirstNode.emplace(index,make_pair(first,i-1));
-            } else {
-                //bb was written previously
-                next=search->second.first;
-                last=search->second.second;
-
-                ostrm <<'\t'<<prev<<" -> "<<next<<";\n";
-            }
-
-            if(hasFallthrough())
-                next=nextFallthrough->printBB(ostrm,next,last,bbFirstNode);
-            if(hasJump())
-                next=nextJump->printBB(ostrm,next,last,bbFirstNode);
-            return next;
-
-
-        }
-
-        void printBBdot(const string& fout) const{
-            if (ofstream ostrm{fout, ios::binary}) {
-                ostrm << "digraph G{\n";
-                ostrm << "\tnode[shape=box];\n";
-
-                if(content.empty()){
-                    cerr<<"found empty bb!\n";
-                    return;
-                }
-
-                map<unsigned,pair<unsigned,unsigned>> bbFirstNode;
-                printBB(ostrm,0,0,bbFirstNode);
-                ostrm << "}";
-            }
-        }
-    };
 
     struct Norm1{
         vector<uint8_t> creation;
@@ -209,13 +30,6 @@ struct Program {
     struct Norm2{
         vector<Instruction> instrs;
         map<uint64_t,uint64_t> jumptable;
-
-        void print(){
-            int j =0;
-            for(const auto& i:instrs){
-                cout<<j++<<": "<<i.mnemonic<<'\n';
-            }
-        }
     };
 
     unordered_map<uint8_t,Instruction> instrMap = {
@@ -359,7 +173,7 @@ struct Program {
     Program() = default;
 
     ///ignores the first three lines of given ifstream
-    bool isCreation(ifstream &istrm) const {
+    bool isCreationAndPrep(ifstream &istrm) const {
         const long max = numeric_limits<streamsize>::max();
         istrm.ignore(max,'\n');
         istrm.ignore(max,'\n');
@@ -390,21 +204,12 @@ struct Program {
         auxdata = move(aux);
     }
 
-    uint64_t getTopUll(stack<bitset<256>>& stack) const {
-        try {
-            return stack.top().to_ullong();
-        } catch (const std::overflow_error& e) {
-            cerr<<"request for unsigned long long value from: "<<stack.top()<<"...\n";
-            return 0;
-        }
-    }
-
     ///reads the given evm bytecode, and converts the hex chars to respective int value,
     Norm1 normalize1(const string& filename){
         if (ifstream istrm{filename, ios::binary}) {
 
             Norm1 n1;
-            if(isCreation(istrm)){
+            if(isCreationAndPrep(istrm)){
                 extractSubProgram(istrm,n1.creation);
             }
             extractSubProgram(istrm,n1.run);
@@ -447,44 +252,7 @@ struct Program {
         return n2;
     }
 
-    void adjustJumpPtr(BasicBlock *bb, stack<bitset<256>> stack, const map<uint64_t, BasicBlock *> &jumpDst,
-                       const map<uint64_t, uint64_t> &jumptable){
-        //fallthrough also processes stack, because of jumpi
-        if(!bb->needsJump()) return;
 
-        stack = bb->processStackExceptLast(stack);
-
-        //jumptarget is the topmost element of the stack
-        const uint64_t jumptarget = [&]{
-            uint64_t oldTarget=0;
-            try{
-                oldTarget = getTopUll(stack);
-                return jumptable.at(oldTarget);
-            } catch(const out_of_range& e) {
-                cerr << "Could not find Jumptable value for stack value "<<oldTarget <<" in BB"<<bb->index<<'\n';
-                throw e;
-            }
-        }();
-
-        bb->setJump([&]{
-            uint64_t oldTarget=0;
-            try{
-                oldTarget = getTopUll(stack);
-                return jumpDst.at(jumptable.at(oldTarget));
-            } catch(const out_of_range& e) {
-                cerr << "Could not find a JUMPDEST at: "<<oldTarget<<" for BB"<<bb->index<<'\n';
-                throw e;
-            }
-        }());
-
-        bb->content.back().processStack(stack);
-
-        adjustJumpPtr(bb->nextJump, stack, jumpDst, jumptable);
-
-        if(bb->hasFallthrough()){
-            adjustJumpPtr(bb->nextFallthrough, stack, jumpDst, jumptable);
-        }
-    }
 
     ///end of bb without fallthrough:   revert/stop/return/jump
     ///end of bb with fallthrough:      jumpi
@@ -505,7 +273,7 @@ struct Program {
 
         //splits into basic blocks
         for(const auto& instr:n.instrs){
-            curr->content.push_back(instr);
+            curr->addInstruction(instr);
             instrIdx++;
 
             if(bbendInstr.find(instr.opcode)!=bbendInstr.end() && instrIdx<n.instrs.size()){
@@ -519,7 +287,7 @@ struct Program {
         }
 
         stack<bitset<256>> stack;
-        adjustJumpPtr(head, stack, jumpDst, n.jumptable);
+        head->adjustJumpPtr(stack, jumpDst, n.jumptable);
 
         return make_unique<BasicBlock>(*head);
     }
@@ -538,11 +306,13 @@ int main() {
             auto start = p.normalize3(ncreate2);
             start->printBBdot(fout);
         }*/
+        Program::Norm2 ncreate2 = p.normalize2(n1.creation);
         Program::Norm2 nrun2 = p.normalize2(n1.run);
-        //nrun2.print();
 
         auto ele = p.normalize3(nrun2);
         ele->printBBdot(foutr);
+
+        cout<<"hi!!!!"<<endl;
 
     } catch(const exception& e){
         cerr<<e.what()<<'\n';
