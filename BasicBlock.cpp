@@ -19,11 +19,11 @@ void BasicBlock::setJump(BasicBlock* bb) {
 }
 
 bool BasicBlock::needsFallthrough() const{
-    return content.back().opcode == 0x57;
+    return content.back()->getOpcodeOld() == 0x57;
 }
 
 bool BasicBlock::needsJump() const{
-    const auto& opc = content.back().opcode;
+    const auto& opc = content.back()->getOpcodeOld();
     return opc == 0x56 || opc == 0x57;
 }
 
@@ -35,14 +35,14 @@ bool BasicBlock::hasJump() const{
     return nextJump!=nullptr;
 }
 
-void BasicBlock::addInstruction(const Instruction& instr){
-    content.push_back(instr);
+void BasicBlock::addInstruction(unique_ptr<Instruction>&& instr){
+    content.push_back(move(instr));
 }
 
 stack<bitset<256>> BasicBlock::processStackExceptLast(stack<bitset<256>> stack) const{
     const auto num = content.size()-1;
     for(unsigned i=0;i<num;i++){
-        content[i].processStack(stack);
+        content[i]->processStack(stack);
     }
     return stack;
 }
@@ -76,17 +76,15 @@ void BasicBlock::adjustJumpPtr(stack<bitset<256>> stack, const map<uint64_t, Bas
     }();
 
     setJump([&]{
-        uint64_t oldTarget=0;
         try{
-            oldTarget = getTopUll(stack);
-            return jumpDst.at(jumptable.at(oldTarget));
+            return jumpDst.at(jumptarget);
         } catch(const out_of_range& e) {
-            cerr << "Could not find a JUMPDEST at: "<<oldTarget<<" for BB"<<index<<'\n';
+            cerr << "Could not find a JUMPDEST at: "<<jumptarget<<" for BB"<<index<<'\n';
             throw e;
         }
     }());
 
-    content.back().processStack(stack);
+    content.back()->processStack(stack);
 
     nextJump->adjustJumpPtr(stack, jumpDst, jumptable);
 
@@ -108,7 +106,7 @@ unsigned BasicBlock::printBB(ofstream& ostrm,const unsigned first,const unsigned
 
         unsigned i = first;
         for(const auto& instr:content){
-            ostrm <<"\t\t"<<i++<<"[label=\""<<instr.mnemonic<<"\"];\n";
+            ostrm <<"\t\t"<<i++<<"[label=\""<<instr->getMnemonic()<<"\"];\n";
         }
         ostrm <<"\t\t";
         if(prev!=0)

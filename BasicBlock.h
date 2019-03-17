@@ -11,6 +11,7 @@
 #include <map>
 #include <iostream>
 #include <fstream>
+#include <memory>
 
 #include "Instruction.h"
 
@@ -38,7 +39,8 @@ namespace bb {
 
         bool hasJump() const;
 
-        void addInstruction(const Instruction& instr);
+        //TODO && vs no &!
+        void addInstruction(unique_ptr<Instruction>&& instr);
 
         ///Process the stack for all instructions, but the last
         stack<bitset<256>> processStackExceptLast(stack<bitset<256>> stack) const;
@@ -54,7 +56,7 @@ namespace bb {
 
     private:
         const unsigned index;
-        vector<Instruction> content;
+        vector<unique_ptr<Instruction>> content;
         BasicBlock* nextJump;
         BasicBlock* nextFallthrough;
     };
