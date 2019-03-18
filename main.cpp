@@ -30,6 +30,12 @@ struct Program {
     struct Norm2{
         vector<unique_ptr<Instruction>> instrs;
         map<uint64_t,uint64_t> jumptable;
+
+        void print(){
+            for(const auto& e:instrs){
+                cout<<e->toString()<<'\n';
+            }
+        }
     };
 
     Program() = default;
@@ -42,7 +48,7 @@ struct Program {
         string s;
         getline(istrm,s);
         //size of "Binary:" = 7
-        return s.length() == 7;
+        return !s.compare("Binary: ");
 
     }
 
@@ -164,7 +170,7 @@ struct Program {
 };
 
 int main() {
-    const string filename = "/home/alex/CLionProjects/EvmBytecodeAnalyzer/input/test.bin";
+    const string filename = "/home/alex/CLionProjects/EvmBytecodeAnalyzer/input/if.bin";
     const string fout = "/home/alex/CLionProjects/EvmBytecodeAnalyzer/output/graph.gv";
     const string foutr = "/home/alex/CLionProjects/EvmBytecodeAnalyzer/output/graph2.gv";
     try{
@@ -178,6 +184,7 @@ int main() {
         }*/
         Program::Norm2 ncreate2 = p.normalize2(n1.creation);
         Program::Norm2 nrun2 = p.normalize2(n1.run);
+        nrun2.print();
 
         auto ele = p.normalize3(nrun2);
         ele->printBBdot(foutr);

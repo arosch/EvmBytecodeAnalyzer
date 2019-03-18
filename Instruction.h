@@ -173,6 +173,8 @@ namespace instr {
         virtual uint8_t getAlpha() const { return alpha;}
         virtual uint8_t getDelta() const { return delta;}
 
+        virtual string toString() const { return getMnemonic();}
+
         virtual void processStack(stack<bitset<256>>& stack) const;
         virtual bitset<256> getPushValue() const;
 
@@ -199,6 +201,14 @@ namespace instr {
         bitset<256> getPushValue() const override;
         uint8_t getAlpha() const override{ return alpha;}
         uint8_t getDelta() const override{ return delta;}
+
+        string toString() const override{
+            try{
+                return getMnemonic()+": "+to_string(getPushValue().to_ullong());
+            } catch(overflow_error e){
+                return getMnemonic()+": "+getPushValue().to_string();
+            }
+        }
 
     private:
         static const uint8_t delta = 0;
