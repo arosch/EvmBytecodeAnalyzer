@@ -12,6 +12,7 @@
 #include <iostream>
 #include <fstream>
 #include <memory>
+#include <set>
 
 #include "Instruction.h"
 
@@ -61,6 +62,8 @@ namespace bb {
         vector<unique_ptr<Instruction>> content;
         BasicBlock* nextJump;
         BasicBlock* nextFallthrough;
+
+        static const set<Instruction::Opcode> noFallthroughInstrs;
     };
 }
 

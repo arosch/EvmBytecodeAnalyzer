@@ -19,7 +19,7 @@ void BasicBlock::setJump(BasicBlock* bb) {
 }
 
 bool BasicBlock::needsFallthrough() const{
-    return content.back()->getOpcode() == Instruction::Opcode::JUMPI;
+    return noFallthroughInstrs.find(static_cast<Instruction::Opcode>(content.back()->getOpcode()))==noFallthroughInstrs.end();
 }
 
 bool BasicBlock::needsJump() const{
@@ -155,3 +155,5 @@ void BasicBlock::printBBdot(const string& fout) const{
         ostrm << "}";
     }
 }
+
+const set<Instruction::Opcode> BasicBlock::noFallthroughInstrs = {Instruction::Opcode::STOP,Instruction::Opcode::JUMP,Instruction::Opcode::RETURN,Instruction::Opcode::REVERT};

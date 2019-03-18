@@ -32,8 +32,9 @@ struct Program {
         map<uint64_t,uint64_t> jumptable;
 
         void print(){
+            unsigned i=0;
             for(const auto& e:instrs){
-                cout<<e->toString()<<'\n';
+                cout<<i++<<" "<<e->toString()<<'\n';
             }
         }
     };
@@ -150,9 +151,11 @@ struct Program {
         for(auto it=n.instrs.begin();it!=n.instrs.end();it++){
             const auto opc = (*it)->getOpcode();
             curr->addInstruction(move(*it));
-            instrIdx++;
 
-            if(bbendInstr.find(opc)!=bbendInstr.end() && instrIdx<n.instrs.size()){
+            //to skip creation of empty bb
+            if(++instrIdx==n.instrs.size()) continue;
+
+            if(bbendInstr.find(opc)!=bbendInstr.end() || ((*next(it,1))->getOpcode()==Instruction::Opcode::JUMPDEST)){
                 //found end of bb: next instr is a new bb
                 auto succ = new BasicBlock(bbIdx++);
                 jumpDst.emplace(instrIdx,succ);
