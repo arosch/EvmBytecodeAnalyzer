@@ -24,7 +24,7 @@ bool BasicBlock::needsFallthrough() const{
 
 bool BasicBlock::needsJump() const{
     const auto& opc = content.back()->getOpcode();
-    return opc == Instruction::Opcode::JUMP || opc == Instruction::Opcode::JUMPI;
+    return (opc == Instruction::Opcode::JUMP || opc == Instruction::Opcode::JUMPI) && nextJump == nullptr;
 }
 
 bool BasicBlock::hasFallthrough() const{
@@ -37,6 +37,14 @@ bool BasicBlock::hasJump() const{
 
 void BasicBlock::addInstruction(unique_ptr<Instruction>&& instr){
     content.push_back(move(instr));
+}
+
+stack<bitset<256>> BasicBlock::processStack(stack<bitset<256>> stack) const{
+    const auto num = content.size();
+    for(unsigned i=0;i<num;i++){
+        content[i]->processStack(stack);
+    }
+    return stack;
 }
 
 stack<bitset<256>> BasicBlock::processStackExceptLast(stack<bitset<256>> stack) const{
@@ -58,86 +66,94 @@ uint64_t BasicBlock::getTopUll(stack<bitset<256>>& stack) const {
 
 void BasicBlock::adjustJumpPtr(stack<bitset<256>> stack, const map<uint64_t, BasicBlock *> &jumpDst,
                    const map<uint64_t, uint64_t> &jumptable){
-    //fallthrough also processes stack, because of jumpi
-    if(!needsJump()) return;
 
-    stack = processStackExceptLast(stack);
+    if(needsJump()){
+        stack = processStackExceptLast(stack);
+        //jumptarget is the topmost element of the stack
+        const uint64_t jumptarget = [&]{
+            uint64_t oldTarget=0;
+            try{
+                oldTarget = getTopUll(stack);
+                return jumptable.at(oldTarget);
+            } catch(const out_of_range& e) {
+                throw out_of_range("Could not find Jumptable value for stack value: "+to_string(oldTarget)+ " for BB"+to_string(index));
+            }
+        }();
 
-    //jumptarget is the topmost element of the stack
-    const uint64_t jumptarget = [&]{
-        uint64_t oldTarget=0;
-        try{
-            oldTarget = getTopUll(stack);
-            return jumptable.at(oldTarget);
-        } catch(const out_of_range& e) {
-            cerr << "Could not find Jumptable value for stack value "<<oldTarget <<" in BB"<<index<<'\n';
-            throw e;
+        setJump([&]{
+            try{
+                return jumpDst.at(jumptarget);
+            } catch(const out_of_range& e) {
+                throw out_of_range("Could not find a JUMPDEST at: "+to_string(jumptarget)+ " for BB"+to_string(index));
+            }
+        }());
+
+        content.back()->processStack(stack);
+
+        nextJump->adjustJumpPtr(stack, jumpDst, jumptable);
+
+        if(hasFallthrough()){
+            nextFallthrough->adjustJumpPtr(stack, jumpDst, jumptable);
         }
-    }();
-
-    setJump([&]{
-        try{
-            return jumpDst.at(jumptarget);
-        } catch(const out_of_range& e) {
-            cerr << "Could not find a JUMPDEST at: "<<jumptarget<<" for BB"<<index<<'\n';
-            throw e;
+    } else {
+        if(hasFallthrough()){
+            nextFallthrough->adjustJumpPtr(processStack(stack), jumpDst, jumptable);
         }
-    }());
-
-    content.back()->processStack(stack);
-
-    nextJump->adjustJumpPtr(stack, jumpDst, jumptable);
-
-    if(hasFallthrough()){
-        nextFallthrough->adjustJumpPtr(stack, jumpDst, jumptable);
     }
+
+
 }
 
-unsigned BasicBlock::printBB(ofstream& ostrm,const unsigned first,const unsigned prev,map<unsigned,pair<unsigned,unsigned>>& bbFirstNode) const{
+unsigned BasicBlock::printBB(ofstream& ostrm, const unsigned first, map<unsigned,unsigned>& bbFirstNode, vector<pair<unsigned,unsigned>>& dependencies) const{
+
     unsigned next;
-    unsigned last;
 
     auto search = bbFirstNode.find(index);
-    if(search==bbFirstNode.end()){
-        //bb is not yet written
+    if(search!=bbFirstNode.end()) return first;
 
-        ostrm <<"\tsubgraph cluster"<<index<<" {\n";
-        ostrm <<"\t\tlabel=\"bb"<<index<<"\";\n";
+    //bb is not yet written...
 
-        unsigned i = first;
-        for(const auto& instr:content){
-            ostrm <<"\t\t"<<i++<<"[label=\""<<instr->getMnemonic()<<"\"];\n";
-        }
-        ostrm <<"\t\t";
-        if(prev!=0)
-            ostrm<<prev<<" -> ";
-        for(unsigned j=first;j<i;j++){
-            ostrm<<j;
-            if(j!=i-1)
-                ostrm <<" -> ";
-            else
-                ostrm <<";";
-        }
-        ostrm <<'\n';
-        ostrm <<"\t}\n\n";
+    ostrm <<"\tsubgraph cluster"<<index<<" {\n";
+    ostrm <<"\t\tlabel=\"bb"<<index<<"\";\n";
 
-        next=i;
-        last=i-1;
-        //if bb referenced again -> store first and last node value
-        bbFirstNode.emplace(index,make_pair(first,i-1));
-    } else {
-        //bb was written previously
-        next=search->second.first;
-        last=search->second.second;
+    unsigned i = first;
+    for(const auto& instr:content){
+        ostrm <<"\t\t"<<i++<<"[label=\""<<instr->getMnemonic()<<"\"];\n";
+    }
+    ostrm <<"\t\t";
+    //if(prev!=0)
+    //    ostrm<<prev<<" -> ";
+    for(unsigned j=first;j<i;j++){
+        ostrm<<j;
+        if(j!=i-1)
+            ostrm <<" -> ";
+        else
+            ostrm <<";";
+    }
+    ostrm <<'\n';
+    ostrm <<"\t}\n\n";
 
-        ostrm <<'\t'<<prev<<" -> "<<next<<";\n";
+    next=i;
+    //if bb referenced again -> store first and last node value
+    bbFirstNode.emplace(index,first);
+
+    const unsigned last=i-1;
+    if(hasFallthrough()){
+        dependencies.emplace_back(last,nextFallthrough->index);
+        next=nextFallthrough->printBB(ostrm,next,bbFirstNode,dependencies);
+    }
+    if(hasJump()){
+        dependencies.emplace_back(last,nextJump->index);
+        next=nextJump->printBB(ostrm,next,bbFirstNode,dependencies);
     }
 
-    if(hasFallthrough())
-        next=nextFallthrough->printBB(ostrm,next,last,bbFirstNode);
-    if(hasJump())
-        next=nextJump->printBB(ostrm,next,last,bbFirstNode);
     return next;
+}
+
+unsigned BasicBlock::printBBDependencies(ofstream& ostrm, map<unsigned,unsigned>& bbFirstNode, vector<pair<unsigned,unsigned>>& dependencies) const{
+    for(const auto& d:dependencies){
+        ostrm<<'\t'<<d.first<<" -> "<<bbFirstNode.at(d.second)<<";\n";
+    }
 }
 
 void BasicBlock::printBBdot(const string& fout) const{
@@ -150,8 +166,10 @@ void BasicBlock::printBBdot(const string& fout) const{
             return;
         }
 
-        map<unsigned,pair<unsigned,unsigned>> bbFirstNode;
-        printBB(ostrm,0,0,bbFirstNode);
+        map<unsigned,unsigned> bbFirstNode;
+        vector<pair<unsigned,unsigned>> dependencies;
+        printBB(ostrm,0,bbFirstNode,dependencies);
+        printBBDependencies(ostrm,bbFirstNode,dependencies);
         ostrm << "}";
     }
 }

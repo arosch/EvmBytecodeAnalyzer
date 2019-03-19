@@ -187,7 +187,7 @@ int main() {
         }*/
         Program::Norm2 ncreate2 = p.normalize2(n1.creation);
         Program::Norm2 nrun2 = p.normalize2(n1.run);
-        nrun2.print();
+        //nrun2.print();
 
         auto ele = p.normalize3(nrun2);
         ele->printBBdot(foutr);

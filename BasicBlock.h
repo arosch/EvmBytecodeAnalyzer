@@ -45,6 +45,7 @@ namespace bb {
         //TODO && vs no &!
         void addInstruction(unique_ptr<Instruction>&& instr);
 
+        stack<bitset<256>> processStack(stack<bitset<256>> stack) const;
         ///Process the stack for all instructions, but the last
         stack<bitset<256>> processStackExceptLast(stack<bitset<256>> stack) const;
 
@@ -53,7 +54,8 @@ namespace bb {
         void adjustJumpPtr(stack<bitset<256>> stack, const map<uint64_t, BasicBlock *> &jumpDst,
                            const map<uint64_t, uint64_t> &jumptable);
 
-        unsigned printBB(ofstream& ostrm,const unsigned first,const unsigned prev,map<unsigned,pair<unsigned,unsigned>>& bbFirstNode) const;
+        unsigned printBB(ofstream& ostrm,const unsigned first,map<unsigned,unsigned>& bbFirstNode, vector<pair<unsigned,unsigned>>& dependencies) const;
+        unsigned printBBDependencies(ofstream& ostrm, map<unsigned,unsigned>& bbFirstNode, vector<pair<unsigned,unsigned>>& dependencies) const;
 
         void printBBdot(const string& fout) const;
 
