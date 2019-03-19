@@ -16,8 +16,6 @@ namespace instr {
     class Instruction{
     public:
 
-        static const map<uint8_t,tuple<string,uint8_t,uint8_t>> instrMap;
-
         enum Opcode:uint8_t{
             STOP=0x00,
             ADD=0x01,
@@ -156,14 +154,7 @@ namespace instr {
             SELFDESTRUCT=0xff
         };
 
-        explicit Instruction(uint8_t opc):Instruction(opc, [&]{
-            try{
-                return instrMap.at(opc);
-            } catch(const out_of_range& e) {
-                throw out_of_range("Couldn't find an instruction with the specified opcode");
-            }
-        }()) { }
-
+        explicit Instruction(uint8_t opc);
         Instruction(uint8_t opc, tuple<string,uint8_t,uint8_t> instr):opcode(static_cast<Opcode>(opc)),mnemonic(get<0>(instr)),delta(get<1>(instr)),alpha(get<2>(instr)) { }
 
         Instruction(const Instruction&) = delete;
@@ -205,7 +196,7 @@ namespace instr {
         string toString() const override{
             try{
                 return getMnemonic()+": "+to_string(getPushValue().to_ullong());
-            } catch(overflow_error e){
+            } catch(const overflow_error& e){
                 return getMnemonic()+": "+getPushValue().to_string();
             }
         }

@@ -142,7 +142,7 @@ struct Program {
         auto curr = head.get();
         jumpDst.emplace(instrIdx,curr);
 
-        const set<uint8_t> bbendInstr = {Instruction::Opcode::STOP,
+        static const set<uint8_t> bbendInstr = {Instruction::Opcode::STOP,
                                          Instruction::Opcode::JUMP,
                                          Instruction::Opcode::JUMPI,
                                          Instruction::Opcode::RETURN,

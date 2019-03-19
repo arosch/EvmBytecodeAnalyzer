@@ -64,8 +64,6 @@ namespace bb {
         vector<unique_ptr<Instruction>> content;
         BasicBlock* nextJump;
         BasicBlock* nextFallthrough;
-
-        static const set<Instruction::Opcode> noFallthroughInstrs;
     };
 }
 
