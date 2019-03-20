@@ -41,7 +41,7 @@ Instruction::Instruction(uint8_t opc):Instruction(opc, [&]{
             {0x32,{"ORIGIN",0,1}},
             {0x33,{"CALLER",0,1}},
             {0x34,{"CALLVALUE",0,1}},
-            {0x35,{"CALLDATALOAD",0,1}},
+            {0x35,{"CALLDATALOAD",1,1}},
             {0x36,{"CALLDATASIZE",0,1}},
             {0x37,{"CALLDATACOPY",0,1}},
             {0x38,{"CODESIZE",0,1}},
@@ -200,8 +200,11 @@ void Push::processStack(stack<bitset<256>>& stack) const{
 //----------------------------------------------------------------------------------------------------------------------
 
 void Swap::processStack(stack<bitset<256>>& stack) const{
+    const unsigned amount = getOpcode() - 0x8e;
     vector<bitset<256>> swapItem;
-    for(unsigned i=0;i<2;i++){
+    swapItem.reserve(amount);
+
+    for(unsigned i=0;i<amount;i++){
         swapItem.push_back(stack.top());
         stack.pop();
     }
