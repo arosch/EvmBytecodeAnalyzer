@@ -43,7 +43,7 @@ struct Program {
 
     ///ignores the first three lines of given ifstream
     bool isCreationAndPrep(ifstream &istrm) const {
-        const long max = numeric_limits<streamsize>::max();
+        constexpr long max = numeric_limits<streamsize>::max();
         istrm.ignore(max,'\n');
         istrm.ignore(max,'\n');
         string s;
@@ -57,7 +57,7 @@ struct Program {
     void extractSubProgram(ifstream& istrm, vector<uint8_t>& bytes){
         string s(2,'\0');
         while(istrm.read(&s[0], 2)) {
-            const auto opc = (uint8_t) stoi(s, nullptr, 16);
+            const auto opc = static_cast<uint8_t >(stoi(s, nullptr, 16));
             if(opc == Instruction::Opcode::INVALID)
                 return;
             bytes.push_back(opc);
@@ -65,7 +65,7 @@ struct Program {
     }
 
     void extractAuxdata(ifstream& istrm, string& auxdata){
-        const unsigned length = 43 << 1;
+        constexpr unsigned length = 43 << 1;
         string aux(length,'\0');
         istrm.read(&aux[0],length);
         if(aux.substr(0,2)!="a1")
@@ -85,7 +85,7 @@ struct Program {
             extractAuxdata(istrm,n1.auxdata);
             return n1;
 
-        } throw invalid_argument("istrm failure");
+        } throw invalid_argument("Could not read from "+filename);
     }
 
     ///remove push bytes and create jump table
@@ -117,7 +117,6 @@ struct Program {
                 n2.instrs.push_back(make_unique<Instruction>(opc));
 
                 if(opc==Instruction::Opcode::JUMPDEST){
-                    //JUMPDEST = 0x5b
                     n2.jumptable.emplace(idx,idx-pushCount);
                 }
             }
@@ -172,19 +171,24 @@ struct Program {
     }
 };
 
-int main() {
-    const string filename = "/home/alex/CLionProjects/EvmBytecodeAnalyzer/input/if.bin";
-    const string fout = "/home/alex/CLionProjects/EvmBytecodeAnalyzer/output/graph.gv";
-    const string foutr = "/home/alex/CLionProjects/EvmBytecodeAnalyzer/output/graph2.gv";
+int main(int argc, char *argv[]) {
+
+    if(argc!=4){
+        cerr<<"Requires input filename, out creation and out runtime\n";
+        return EXIT_FAILURE;
+    }
+    const string filename = argv[1];
+    const string fout = argv[2];
+    const string foutr = argv[3];
     try{
         Program p;
         Program::Norm1 n1 = p.normalize1(filename);
-        /*if(!n1.creation.empty()){
+        if(!n1.creation.empty()){
             Program::Norm2 ncreate2 = p.normalize2(n1.creation);
             //ncreate2.print();
             auto start = p.normalize3(ncreate2);
             start->printBBdot(fout);
-        }*/
+        }
         Program::Norm2 ncreate2 = p.normalize2(n1.creation);
         Program::Norm2 nrun2 = p.normalize2(n1.run);
         //nrun2.print();

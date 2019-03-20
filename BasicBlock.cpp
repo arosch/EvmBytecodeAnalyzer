@@ -122,8 +122,7 @@ unsigned BasicBlock::printBB(ofstream& ostrm, const unsigned first, map<unsigned
         ostrm <<"\t\t"<<i++<<"[label=\""<<instr->getMnemonic()<<"\"];\n";
     }
     ostrm <<"\t\t";
-    //if(prev!=0)
-    //    ostrm<<prev<<" -> ";
+
     for(unsigned j=first;j<i;j++){
         ostrm<<j;
         if(j!=i-1)
@@ -172,7 +171,6 @@ void BasicBlock::printBBdot(const string& fout) const{
         printBB(ostrm,0,bbFirstNode,dependencies);
         printBBDependencies(ostrm,bbFirstNode,dependencies);
         ostrm << "}";
-    }
+    } else
+        throw invalid_argument("Couldn't write to "+fout);
 }
-
-//const set<Instruction::Opcode> BasicBlock::noFallthroughInstrs = {Instruction::Opcode::STOP,Instruction::Opcode::JUMP,Instruction::Opcode::RETURN,Instruction::Opcode::REVERT};

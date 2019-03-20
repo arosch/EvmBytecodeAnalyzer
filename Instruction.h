@@ -13,6 +13,7 @@
 using namespace std;
 
 namespace instr {
+    //------------------------------------------------------------------------------------------------------------------
     class Instruction{
     public:
 
@@ -156,18 +157,17 @@ namespace instr {
 
         explicit Instruction(uint8_t opc);
         Instruction(uint8_t opc, tuple<string,uint8_t,uint8_t> instr):opcode(static_cast<Opcode>(opc)),mnemonic(get<0>(instr)),delta(get<1>(instr)),alpha(get<2>(instr)) { }
-
         Instruction(const Instruction&) = delete;
 
         virtual uint8_t getOpcode() const { return opcode;}
         virtual string getMnemonic() const { return mnemonic;}
         virtual uint8_t getAlpha() const { return alpha;}
         virtual uint8_t getDelta() const { return delta;}
+        virtual bitset<256> getPushValue() const;
 
         virtual string toString() const { return getMnemonic();}
 
         virtual void processStack(stack<bitset<256>>& stack) const;
-        virtual bitset<256> getPushValue() const;
 
     private:
         /// the hex value of the instruction
@@ -180,37 +180,31 @@ namespace instr {
         const uint8_t alpha;
     };
 
+    //------------------------------------------------------------------------------------------------------------------
     class Push:public Instruction{
     public:
 
         explicit Push(uint8_t opc, bitset<256> pV):Instruction(opc), pushValue(pV){  }
-
         Push(const Push&) = delete;
 
-        void processStack(stack<bitset<256>>& stack) const override;
-
-        bitset<256> getPushValue() const override;
         uint8_t getAlpha() const override{ return alpha;}
         uint8_t getDelta() const override{ return delta;}
+        bitset<256> getPushValue() const override;
 
-        string toString() const override{
-            try{
-                return getMnemonic()+": "+to_string(getPushValue().to_ullong());
-            } catch(const overflow_error& e){
-                return getMnemonic()+": "+getPushValue().to_string();
-            }
-        }
+        string toString() const override;
+
+        void processStack(stack<bitset<256>>& stack) const override;
 
     private:
         static const uint8_t delta = 0;
         static const uint8_t alpha = 1;
-        bitset<256> pushValue;
+        const bitset<256> pushValue;
     };
 
+    //------------------------------------------------------------------------------------------------------------------
     class Swap:public Instruction{
     public:
         explicit Swap(uint8_t opc):Instruction(opc) { }
-
         Swap(const Swap&) = delete;
 
         void processStack(stack<bitset<256>>& stack) const override;

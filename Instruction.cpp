@@ -8,51 +8,7 @@
 using namespace std;
 using namespace instr;
 
-void Instruction::processStack(stack<bitset<256>>& stack) const{
-
-    const unsigned pop = delta;
-    const unsigned push = alpha;
-
-    vector<bitset<256>> stackItem;
-
-    //pop
-    for(unsigned i=0;i<pop;i++){
-        stackItem.push_back(stack.top());
-        stack.pop();
-    }
-
-    //push
-    for(unsigned i=0;i<push;i++){
-        stack.emplace(0);
-    }
-
-}
-
-bitset<256> Instruction::getPushValue() const{
-    throw logic_error("Trying to get a push value from a non push instruction");
-}
-
-void Push::processStack(stack<bitset<256>>& stack) const{
-    stack.push(pushValue);
-}
-
-bitset<256> Push::getPushValue() const{
-    return pushValue;
-}
-
-void Swap::processStack(stack<bitset<256>>& stack) const{
-    vector<bitset<256>> swapItem;
-    for(unsigned i=0;i<2;i++){
-        swapItem.push_back(stack.top());
-        stack.pop();
-    }
-    //swap first with last element
-    iter_swap(swapItem.begin(),swapItem.rbegin());
-    //push back onto the stack
-    for(auto it=swapItem.rbegin();it!=swapItem.rend();it++){
-        stack.push(*it);
-    }
-}
+//----------------------------------------------------------------------------------------------------------------------
 
 Instruction::Instruction(uint8_t opc):Instruction(opc, [&]{
     static const map<uint8_t,tuple<string,uint8_t,uint8_t>> instrMap = {
@@ -193,8 +149,66 @@ Instruction::Instruction(uint8_t opc):Instruction(opc, [&]{
             {0xff,{"SELFDESTRUCT",1,0}}
     };
     try{
-    return instrMap.at(opc);
+        return instrMap.at(opc);
     } catch(const out_of_range& e) {
-    throw out_of_range("Couldn't find an instruction with the specified opcode");
+        throw out_of_range("Couldn't find an instruction with the specified opcode");
     }
-    }()) { }
+}()) { }
+
+bitset<256> Instruction::getPushValue() const{
+    throw logic_error("Trying to get a push value from a non push instruction");
+}
+
+void Instruction::processStack(stack<bitset<256>>& stack) const{
+
+    const unsigned pop = delta;
+    const unsigned push = alpha;
+
+    vector<bitset<256>> stackItem;
+
+    //pop
+    for(unsigned i=0;i<pop;i++){
+        stackItem.push_back(stack.top());
+        stack.pop();
+    }
+
+    //push
+    for(unsigned i=0;i<push;i++){
+        stack.emplace(0);
+    }
+
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+
+bitset<256> Push::getPushValue() const{
+    return pushValue;
+}
+
+string Push::toString() const{
+    try{
+        return getMnemonic()+": "+to_string(getPushValue().to_ullong());
+    } catch(const overflow_error& e){
+        return getMnemonic()+": "+getPushValue().to_string();
+    }
+}
+
+void Push::processStack(stack<bitset<256>>& stack) const{
+    stack.push(pushValue);
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+
+void Swap::processStack(stack<bitset<256>>& stack) const{
+    vector<bitset<256>> swapItem;
+    for(unsigned i=0;i<2;i++){
+        swapItem.push_back(stack.top());
+        stack.pop();
+    }
+    //swap first with last element
+    iter_swap(swapItem.begin(),swapItem.rbegin());
+    //push back onto the stack
+    for(auto it=swapItem.rbegin();it!=swapItem.rend();it++){
+        stack.push(*it);
+    }
+}
