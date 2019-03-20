@@ -75,6 +75,7 @@ struct Program {
 
     ///reads the given evm bytecode, and converts the hex chars to respective int value,
     Norm1 normalize1(const string& filename){
+        cout<<"Reading binary code from: "<<filename<<"...\n";
         if (ifstream istrm{filename, ios::binary}) {
 
             Norm1 n1;
@@ -187,12 +188,12 @@ int main(int argc, char *argv[]) {
     try{
         Program p;
         Program::Norm1 n1 = p.normalize1(filename);
-        if(!n1.creation.empty()){
+        /*if(!n1.creation.empty()){
             Program::Norm2 ncreate2 = p.normalize2(n1.creation);
             //ncreate2.print();
             auto start = p.normalize3(ncreate2);
             start->printBBdot(fout);
-        }
+        }*/
         Program::Norm2 ncreate2 = p.normalize2(n1.creation);
         Program::Norm2 nrun2 = p.normalize2(n1.run);
         //nrun2.print();
@@ -200,10 +201,10 @@ int main(int argc, char *argv[]) {
         auto ele = p.normalize3(nrun2);
         ele->printBBdot(foutr);
 
+        return EXIT_SUCCESS;
+
     } catch(const exception& e){
         cerr<<e.what()<<'\n';
         return EXIT_FAILURE;
     }
-
-    return 0;
 }

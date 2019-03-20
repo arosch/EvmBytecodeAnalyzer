@@ -157,6 +157,7 @@ unsigned BasicBlock::printBBDependencies(ofstream& ostrm, map<unsigned,unsigned>
 }
 
 void BasicBlock::printBBdot(const string& fout) const{
+    cout<<"Printing cfg to: "<<fout<<"...\n";
     if (ofstream ostrm{fout, ios::binary}) {
         ostrm << "digraph G{\n";
         ostrm << "\tnode[shape=box];\n";
