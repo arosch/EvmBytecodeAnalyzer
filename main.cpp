@@ -109,6 +109,10 @@ struct Program {
 
                 idx+=num;
                 pushCount+=num;
+            } else if(Instruction::Opcode::DUP1<=opc && opc<=Instruction::Opcode::DUP16){
+
+                n2.instrs.push_back(make_unique<Dup>(opc));
+
             } else if(Instruction::Opcode::SWAP1<=opc && opc<=Instruction::Opcode::SWAP16) {
 
                 n2.instrs.push_back(make_unique<Swap>(opc));

@@ -212,3 +212,25 @@ void Swap::processStack(stack<bitset<256>>& stack) const{
         stack.push(*it);
     }
 }
+
+//----------------------------------------------------------------------------------------------------------------------
+
+void Dup::processStack(stack<bitset<256>>& stack) const{
+    const unsigned amount = getOpcode() - 0x7f;
+    vector<bitset<256>> dupItem;
+    //+1 for dup item
+    dupItem.reserve(amount+1);
+    //dummy holder for dup item
+    dupItem.emplace_back(0);
+
+    for(unsigned i=0;i<amount;i++){
+        dupItem.push_back(stack.top());
+        stack.pop();
+    }
+    //duplicate last item to the front
+    dupItem.at(0)=dupItem.back();
+    //push back onto the stack
+    for(auto it=dupItem.rbegin();it!=dupItem.rend();it++){
+        stack.push(*it);
+    }
+}

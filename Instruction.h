@@ -210,6 +210,15 @@ namespace instr {
         void processStack(stack<bitset<256>>& stack) const override;
     };
 
+    //------------------------------------------------------------------------------------------------------------------
+    class Dup:public Instruction{
+    public:
+        explicit Dup(uint8_t opc):Instruction(opc) { }
+        Dup(const Dup&) = delete;
+
+        void processStack(stack<bitset<256>>& stack) const override;
+    };
+
 }
 
 #endif //EVAL_INSTRUCTION_H
