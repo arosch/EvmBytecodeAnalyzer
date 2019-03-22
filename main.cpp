@@ -22,18 +22,21 @@ using namespace bb;
 struct Program {
 
     struct Norm1{
-        vector<uint8_t> creation;
-        vector<uint8_t> run;
-        string auxdata;
+        vector<uint8_t> bytes;
+        vector<uint8_t> auxdata;
+        bool isCreation;
     };
 
     struct Norm2{
-        vector<unique_ptr<Instruction>> instrs;
-        map<uint64_t,uint64_t> jumptable;
+        vector<unique_ptr<Instruction>> instrsCreation;
+        map<uint64_t,uint64_t> jumptableCreation;
+
+        vector<unique_ptr<Instruction>> instrsRun;
+        map<uint64_t,uint64_t> jumptableRun;
 
         void print(){
             unsigned i=0;
-            for(const auto& e:instrs){
+            for(const auto& e:instrsRun){
                 cout<<i++<<" "<<e->toString()<<'\n';
             }
         }
@@ -48,29 +51,23 @@ struct Program {
         istrm.ignore(max,'\n');
         string s;
         getline(istrm,s);
-        //size of "Binary:" = 7
-        return !s.compare("Binary: ");
+        return s =="Binary: " || s == "Binary:";
 
     }
 
-    ///read
-    void extractSubProgram(ifstream& istrm, vector<uint8_t>& bytes){
-        string s(2,'\0');
-        while(istrm.read(&s[0], 2)) {
-            const auto opc = static_cast<uint8_t >(stoi(s, nullptr, 16));
-            if(opc == Instruction::Opcode::INVALID)
-                return;
-            bytes.push_back(opc);
+    vector<uint8_t> extractAuxdata(vector<uint8_t>& bytes){
+        const unsigned length = 43;
+        const auto it_end = bytes.begin()+bytes.size();
+        const auto it_start = it_end-length;
+
+        vector<uint8_t> auxdata(it_start,it_end);
+        bytes.erase(it_start,it_end);
+
+        if(auxdata.front()!=0xa1){
+            throw invalid_argument("no a1 auxdata found, but: ");
         }
-    }
 
-    void extractAuxdata(ifstream& istrm, string& auxdata){
-        constexpr unsigned length = 43 << 1;
-        string aux(length,'\0');
-        istrm.read(&aux[0],length);
-        if(aux.substr(0,2)!="a1")
-            throw invalid_argument("no a1 auxdata found");
-        auxdata = move(aux);
+        return auxdata;
     }
 
     ///reads the given evm bytecode, and converts the hex chars to respective int value,
@@ -79,60 +76,84 @@ struct Program {
         if (ifstream istrm{filename, ios::binary}) {
 
             Norm1 n1;
-            if(isCreationAndPrep(istrm)){
-                extractSubProgram(istrm,n1.creation);
+            n1.isCreation = isCreationAndPrep(istrm);
+            string s(2,'\0');
+            while(istrm.read(&s[0], 2)) {
+                n1.bytes.push_back(static_cast<uint8_t >(stoi(s, nullptr, 16)));
             }
-            extractSubProgram(istrm,n1.run);
-            extractAuxdata(istrm,n1.auxdata);
+            n1.auxdata = extractAuxdata(n1.bytes);
+
             return n1;
 
         } throw invalid_argument("Could not read from "+filename);
     }
 
     ///remove push bytes and create jump table
-    Norm2 normalize2(const vector<uint8_t>& bytes){
+    Norm2 normalize2(const Norm1 n1){
         Norm2 n2;
+
+        //init instruction vector and jumptable -> creation or run
+        bool isCreation = n1.isCreation;
+        vector<unique_ptr<Instruction>>* instrs;
+        map<uint64_t,uint64_t>* jumpTable;
+        if(isCreation){
+            instrs = &n2.instrsCreation;
+            jumpTable = &n2.jumptableCreation;
+        } else {
+            instrs = &n2.instrsRun;
+            jumpTable = &n2.jumptableRun;
+        }
+
+
         //the number of bytes that are "removed" from the bytes vector, because they belong to a push instruction
         unsigned pushCount =0;
-
-        for(unsigned idx=0;idx<bytes.size();idx++){
-            const auto& opc = bytes.at(idx);
+        unsigned creationCount=0;
+        const auto* bytes = &n1.bytes;
+        for(unsigned idx=0;idx<bytes->size();idx++){
+            const auto& opc = bytes->at(idx);
 
             if(Instruction::Opcode::PUSH1<=opc && opc<=Instruction::Opcode::PUSH32){
 
                 const uint8_t num = opc - (Instruction::Opcode::PUSH1-1);
                 bitset<256> t(0);
                 for(unsigned j=1;j<=num;j++){
-                    t = (t<<8) | bitset<256>(bytes.at(idx+j));
+                    t = (t<<8) | bitset<256>(bytes->at(idx+j));
                 }
 
-                n2.instrs.push_back(make_unique<Push>(opc,t));
+                instrs->push_back(make_unique<Push>(opc,t));
 
                 idx+=num;
                 pushCount+=num;
             } else if(Instruction::Opcode::DUP1<=opc && opc<=Instruction::Opcode::DUP16){
 
-                n2.instrs.push_back(make_unique<Dup>(opc));
+                instrs->push_back(make_unique<Dup>(opc));
 
             } else if(Instruction::Opcode::SWAP1<=opc && opc<=Instruction::Opcode::SWAP16) {
 
-                n2.instrs.push_back(make_unique<Swap>(opc));
+                instrs->push_back(make_unique<Swap>(opc));
+
+            } else if(isCreation && opc==Instruction::Opcode::INVALID) {
+                instrs->push_back(make_unique<Instruction>(opc));
+                //reset pushCount
+                pushCount=0;
+                creationCount=idx+1;
+                //not looking for the end of creation code anymore
+                isCreation=false;
+                instrs = &n2.instrsRun;
+                jumpTable = &n2.jumptableRun;
 
             } else {
-                n2.instrs.push_back(make_unique<Instruction>(opc));
+                instrs->push_back(make_unique<Instruction>(opc));
 
                 if(opc==Instruction::Opcode::JUMPDEST){
-                    n2.jumptable.emplace(idx,idx-pushCount);
+                    jumpTable->emplace(idx-creationCount,idx-creationCount-pushCount);
                 }
             }
         }
         return n2;
     }
 
-
-
-    ///end of bb without fallthrough:   revert/stop/return/jump
-    ///end of bb with fallthrough:      jumpi
+    ///create BasicBlocks with respective fallthrough and jump children
     unique_ptr<BasicBlock> normalize3(Norm2 &n){
 
         //the bb to jump for specified key(=original byte position)
@@ -150,14 +171,15 @@ struct Program {
                                          Instruction::Opcode::JUMP,
                                          Instruction::Opcode::JUMPI,
                                          Instruction::Opcode::RETURN,
-                                         Instruction::Opcode::REVERT};
+                                         Instruction::Opcode::REVERT,
+                                         Instruction::Opcode::INVALID};
 
-        for(auto it=n.instrs.begin();it!=n.instrs.end();it++){
+        for(auto it=n.instrsRun.begin();it!=n.instrsRun.end();it++){
             const auto opc = (*it)->getOpcode();
             curr->addInstruction(move(*it));
 
             //to skip creation of empty bb
-            if(++instrIdx==n.instrs.size()) continue;
+            if(++instrIdx==n.instrsRun.size()) continue;
 
             if(bbendInstr.find(opc)!=bbendInstr.end() || ((*next(it,1))->getOpcode()==Instruction::Opcode::JUMPDEST)){
                 //found end of bb: next instr is a new bb
@@ -170,7 +192,7 @@ struct Program {
         }
 
         stack<bitset<256>> stack;
-        head->adjustJumpPtr(stack, jumpDst, n.jumptable);
+        head->adjustJumpPtr(stack, jumpDst, n.jumptableRun);
 
         return head;
     }
@@ -188,17 +210,10 @@ int main(int argc, char *argv[]) {
     try{
         Program p;
         Program::Norm1 n1 = p.normalize1(filename);
-        /*if(!n1.creation.empty()){
-            Program::Norm2 ncreate2 = p.normalize2(n1.creation);
-            //ncreate2.print();
-            auto start = p.normalize3(ncreate2);
-            start->printBBdot(fout);
-        }*/
-        Program::Norm2 ncreate2 = p.normalize2(n1.creation);
-        Program::Norm2 nrun2 = p.normalize2(n1.run);
+        Program::Norm2 n2 = p.normalize2(n1);
         //nrun2.print();
 
-        auto ele = p.normalize3(nrun2);
+        auto ele = p.normalize3(n2);
         ele->printBBdot(foutr);
 
         return EXIT_SUCCESS;

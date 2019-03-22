@@ -151,7 +151,7 @@ Instruction::Instruction(uint8_t opc):Instruction(opc, [&]{
     try{
         return instrMap.at(opc);
     } catch(const out_of_range& e) {
-        throw out_of_range("Couldn't find an instruction with the specified opcode");
+        throw out_of_range("Couldn't create an instruction with the specified opcode " +to_string(opc));
     }
 }()) { }
 

@@ -19,7 +19,7 @@ void BasicBlock::setJump(BasicBlock* bb) {
 }
 
 bool BasicBlock::needsFallthrough() const{
-    static const set<Instruction::Opcode> noFallthroughInstrs = {Instruction::Opcode::STOP,Instruction::Opcode::JUMP,Instruction::Opcode::RETURN,Instruction::Opcode::REVERT};
+    static const set<Instruction::Opcode> noFallthroughInstrs = {Instruction::Opcode::STOP,Instruction::Opcode::JUMP,Instruction::Opcode::RETURN,Instruction::Opcode::REVERT,Instruction::Opcode::INVALID};
     return noFallthroughInstrs.find(static_cast<Instruction::Opcode>(content.back()->getOpcode()))==noFallthroughInstrs.end();
 }
 
