@@ -1,26 +1,27 @@
-//
-// Created by alex on 16.03.19.
-//
-
 #ifndef EVAL_BASICBLOCK_H
 #define EVAL_BASICBLOCK_H
 
 #include <vector>
 #include <bitset>
 #include <stack>
+#include <utility>
 #include <map>
 #include <iostream>
 #include <fstream>
 #include <memory>
 #include <set>
 
+#include "Operation.h"
 #include "Instruction.h"
+#include "Candidate.h"
 
 using namespace std;
+using namespace op;
 using namespace instr;
 
 namespace bb {
 
+    template <class T>
     class BasicBlock{
     public:
 
@@ -32,21 +33,51 @@ namespace bb {
 
         void setJump(BasicBlock* bb);
 
-        ///only JUMPI has a fallthrough
         bool needsFallthrough() const;
 
-        ///tests if BasicBlock needs a next Jump
         bool needsJump() const;
 
         bool hasFallthrough() const;
 
+        bool hasSuccessorEligibleFallthrough() const;
+
         bool hasJump() const;
 
-        //TODO && vs no &!
-        void addInstruction(unique_ptr<Instruction>&& instr);
+        bool hasSuccessorEligibleJump() const;
+
+        unsigned getIndex() const {
+            return index;
+        }
+
+        unsigned getFallthroughIndex() const{
+            return nextFallthrough->getIndex();
+        }
+
+        unsigned getJumpIndex() const{
+            if(!hasJump()) return 0;
+            return nextJump->getIndex();
+        }
+
+        BasicBlock* getFallthrough(){
+            return nextFallthrough;
+        }
+
+        BasicBlock* getJump(){
+            return nextJump;
+        }
+
+        void setContent(vector<unique_ptr<T>>&& c);
+
+        bool contentIsEmpty() const{ return content.empty(); }
+
+        bool isAJumpOnlyBb() const;
+
+        void setSuccessorLikeOther(BasicBlock<Operation>* other, vector<unique_ptr<BasicBlock<Instruction>>>& successors);
+
+        void addInstruction(unique_ptr<T>&& instr);
 
         stack<bitset<256>> processStack(stack<bitset<256>> stack) const;
-        ///Process the stack for all instructions, but the last
+
         stack<bitset<256>> processStackExceptLast(stack<bitset<256>> stack) const;
 
         uint64_t getTopUll(stack<bitset<256>>& stack) const;
@@ -54,14 +85,24 @@ namespace bb {
         void adjustJumpPtr(stack<bitset<256>> stack, const map<uint64_t, BasicBlock *> &jumpDst,
                            const map<uint64_t, uint64_t> &jumptable);
 
-        unsigned printBB(ofstream& ostrm,const unsigned first,map<unsigned,unsigned>& bbFirstNode, vector<pair<unsigned,unsigned>>& dependencies) const;
-        unsigned printBBDependencies(ofstream& ostrm, map<unsigned,unsigned>& bbFirstNode, vector<pair<unsigned,unsigned>>& dependencies) const;
+        unsigned instantiate(stack<pair<unsigned, bitset<256>>> stack,
+                             const int predecessor,
+                             const unsigned varIndex,
+                             vector<unique_ptr<BasicBlock<Instruction>>> &bbs,
+                             map<unsigned, Candidate> &candidates,
+                             map<unsigned, BasicBlock<Operation> *> &operations,
+                             map<unsigned, unsigned> &indexMatch);
 
-        void printBBdot(const string& fout) const;
+        void assignSuccessorToEligiblePredecessor(unsigned successorIndex,BasicBlock<Instruction>* newSuccessor, vector<vector<unsigned>>& predecessors, vector<unique_ptr<BasicBlock<Instruction>>>& bbs);
 
+        unsigned printBbDot(ofstream& ostrm, const unsigned firstNodeId) const;
+        void printBbDotDependencies(ofstream &ostrm, const vector<unsigned>& firstNodes, const vector<unsigned>& lastNodes) const;
+
+        unsigned getStatistics() const;
+
+        vector<unique_ptr<T>> content;
     private:
         const unsigned index;
-        vector<unique_ptr<Instruction>> content;
         BasicBlock* nextJump;
         BasicBlock* nextFallthrough;
     };
