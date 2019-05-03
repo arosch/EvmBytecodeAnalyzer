@@ -40,6 +40,10 @@ vector<uint8_t> Contract::readBytecode(const string& filename){
     cout<<"Reading binary code from: "<<filename<<"...\n";
     if (ifstream istrm{filename, ios::binary}) {
 
+        if(istrm.peek() == std::ifstream::traits_type::eof()){
+            throw invalid_argument("File is empty...");
+        }
+
         this->creation = isCreationAndPrep(istrm);
         vector<uint8_t> bytes;
         string s(2,'\0');
