@@ -24,7 +24,7 @@ string Instruction::toDotLabel(const unsigned bbJumpIndex) const{
                     auto v = p.second.to_ullong();
                     ss<<v;
                 } catch(const overflow_error& e){
-                    ss<<mnemonic;
+                    ss<<"WORD";
 
                     //ss<<p.second.to_string();
                 }

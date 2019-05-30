@@ -164,6 +164,7 @@ vector<unique_ptr<BasicBlock<Operation>>> Contract::normalize2(vector<unique_ptr
 
             //create the new bb
             bbs.emplace_back(make_unique<BasicBlock<Operation>>(bbIdx++));
+            //only if JUMPDEST is it a viable jump destination
             jumpDst.emplace(instrIdx,bbs.back().get());
 
             if(prev->needsFallthrough())
