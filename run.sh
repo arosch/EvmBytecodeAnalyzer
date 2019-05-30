@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 
-make
-#make clean
+# directory of this file
+dir="${0%/*}"
 
-./EvmBcAnalyzer $1 ./output/graph.gv ./output/graph2.gv ./output/graph3.gv
+# make the executable
+(cd $dir/build && make)
 
-dot -Tps output/graph.gv -o output/graph_creation.ps
-dot -Tps output/graph2.gv -o output/graph2_runtime.ps
-dot -Tps output/graph3.gv -o output/graph3_abstract.ps
+# execution
+$dir/build/evmBcAnalyzer $1 $dir/output/graph.gv $dir/output/graph2.gv $dir/output/graph3.gv
+
+# generate the ps cfgs
+dot -Tps $dir/output/graph.gv -o $dir/output/graph_creation.ps
+dot -Tps $dir/output/graph2.gv -o $dir/output/graph2_runtime.ps
+dot -Tps $dir/output/graph3.gv -o $dir/output/graph3_abstract.ps
