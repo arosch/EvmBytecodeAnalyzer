@@ -3,7 +3,6 @@ pragma solidity ^0.5;
 contract Addition {
 
     int left =3;
-
     int128 right = 50000000;
 
     function add() public returns(int result){
@@ -19,6 +18,6 @@ contract Addition {
     }
 
     function sub() public{
-    right =6;
+        right =6;
     }
 }

@@ -2,8 +2,6 @@ pragma solidity ^0.5;
 
 contract Addition {
 
-    int left =3;
-
     int right = 5;
     int count = 20;
 
