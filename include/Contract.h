@@ -50,42 +50,10 @@ public:
     }
 
     template<typename T>
-    void printToDotFile(const string& fout, const vector<unique_ptr<BasicBlock<T>>>& bbs) const{
-        cout<<"Printing cfg to: "<<fout<<"...\n";
-
-        if (ofstream ostrm{fout, ios::binary}) {
-            ostrm << "digraph G{\n";
-            ostrm << "\tnode[shape=box];\n\n";
-
-            vector<unsigned> firstNode;
-            vector<unsigned> lastNode;
-            unsigned nodeId = 0;
-
-            for(const auto& bb:bbs){
-                firstNode.push_back(nodeId);
-                nodeId = bb->printBbDot(ostrm,nodeId);
-                lastNode.push_back(nodeId-1);
-            }
-
-            for(const auto& bb:bbs){
-                bb->printBbDotDependencies(ostrm,firstNode,lastNode);
-            }
-
-            ostrm << "}";
-        } else
-            throw invalid_argument("Couldn't write to "+fout);
-    }
+    void printToDotFile(const string& fout, const vector<unique_ptr<BasicBlock<T>>>& bbs) const;
 
     template<typename T>
-    void writeStatstics(const string& label, const vector<unique_ptr<BasicBlock<T>>>& bbs) const{
-        unsigned countInstr = 0;
-        unsigned countBb = 0;
-        for(const auto& bb:bbs){
-            countInstr += bb->getStatistics();
-            if(!bb->contentIsEmpty() || !bb->isAJumpOnlyBb()) countBb++;
-        }
-        cout<<label <<" | Number of instructions: "<<countInstr<< " | Number of basic blocks: "<<countBb<<'\n';
-    }
+    void writeStatstics(const string& label, const vector<unique_ptr<BasicBlock<T>>>& bbs) const;
 
 private:
     ///ignores the first three lines of given ifstream
@@ -110,6 +78,46 @@ private:
     vector<unique_ptr<BasicBlock<Operation>>> runtimeHead;
     vector<uint8_t> auxdata;
 };
+
+/*------------------------- Implementation ----------------------------*/
+
+template<typename T>
+void Contract::writeStatstics(const string& label, const vector<unique_ptr<BasicBlock<T>>>& bbs) const{
+    unsigned countInstr = 0;
+    unsigned countBb = 0;
+    for(const auto& bb:bbs){
+        countInstr += bb->getStatistics();
+        if(!bb->contentIsEmpty() || !bb->isAJumpOnlyBb()) countBb++;
+    }
+    cout<<label <<" | Number of instructions: "<<countInstr<< " | Number of basic blocks: "<<countBb<<'\n';
+}
+
+template<typename T>
+void Contract::printToDotFile(const string& fout, const vector<unique_ptr<BasicBlock<T>>>& bbs) const{
+    cout<<"Printing cfg to: "<<fout<<"...\n";
+
+    if (ofstream ostrm{fout, ios::binary}) {
+        ostrm << "digraph G{\n";
+        ostrm << "\tnode[shape=box];\n\n";
+
+        vector<unsigned> firstNode;
+        vector<unsigned> lastNode;
+        unsigned nodeId = 0;
+
+        for(const auto& bb:bbs){
+            firstNode.push_back(nodeId);
+            nodeId = bb->printBbDot(ostrm,nodeId);
+            lastNode.push_back(nodeId-1);
+        }
+
+        for(const auto& bb:bbs){
+            bb->printBbDotDependencies(ostrm,firstNode,lastNode);
+        }
+
+        ostrm << "}";
+    } else
+        throw invalid_argument("Couldn't write to "+fout);
+}
 
 } // namespace evmbca
 
