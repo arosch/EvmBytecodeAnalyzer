@@ -46,10 +46,12 @@ bool BasicBlock<Instruction>::hasSuccessorEligibleJump() const{
     return hasJump() && !(nextJump->isAJumpOnlyBb() || nextJump->contentIsEmpty());
 }
 
+/*
 template<typename T>
 void BasicBlock<T>::setContent(vector<unique_ptr<T>>&& c){
     content = {make_move_iterator(c.begin()),make_move_iterator(c.end())};
 }
+*/
 
 template<typename T>
 bool BasicBlock<T>::isAJumpOnlyBb() const { return content.size()==1 && content.front()->isAJumpInstruction(); }
@@ -245,7 +247,7 @@ unsigned BasicBlock<T>::printBbDot(ofstream &ostrm, const unsigned firstNodeId) 
 
     unsigned nodeId = firstNodeId;
     for(const auto& instr:content){
-        ostrm <<"\t\t"<<nodeId++<<"[label=\""<<instr->toDotLabel(getJumpIndex())<<"\"];\n";
+        ostrm <<"\t\t"<<nodeId++<<"[label=\""<<instr->toString()<<"\"];\n";
     }
 
     //dependency chain within the basic block

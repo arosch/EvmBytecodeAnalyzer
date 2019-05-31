@@ -64,7 +64,7 @@ public:
         return nextJump;
     }
 
-    void setContent(vector<unique_ptr<T>>&& c);
+    //void setContent(vector<unique_ptr<T>>&& c);
 
     bool contentIsEmpty() const{ return content.empty(); }
 

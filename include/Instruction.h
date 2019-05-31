@@ -17,13 +17,12 @@ public:
 
     Instruction(const Instruction& other)=default;
 
-    string toDotLabel(const unsigned bbJumpIndex) const;
-
     bool returnsVar() const{ return alpha==1; }
 
     bool isAJumpInstruction() { return opcode==0x56 || opcode==0x57; }
 
     bool operator==(const Instruction& other) const;
+    string toString() const;
 
 private:
     /// the hex value of the instruction

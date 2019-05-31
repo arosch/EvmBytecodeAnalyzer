@@ -219,10 +219,6 @@ string Push::toString() const{
     }
 }
 
-string Push::toDotLabel(const unsigned bbJumpIndex) const{
-    return toString();
-}
-
 void Push::processStack(stack<bitset<256>>& stack) const{
     stack.push(pushValue);
 }

@@ -167,8 +167,8 @@ public:
     virtual bool isAJumpInstruction() { return opcode==0x56 || opcode==0x57; }
 
     virtual optional<evmbca::Instruction> toInstruction(stack<pair<unsigned,bitset<256>>>& stack, unsigned varCount) const;
+
     virtual string toString() const { return getMnemonic(); }
-    virtual string toDotLabel(const unsigned bbJumpIndex) const { return getMnemonic(); }
 
     virtual void processStack(stack<bitset<256>>& stack) const;
 
@@ -194,7 +194,6 @@ public:
 
     optional<evmbca::Instruction> toInstruction(stack<pair<unsigned,bitset<256>>>& stack, unsigned varCount) const override;
     string toString() const override;
-    string toDotLabel(const unsigned bbJumpIndex) const override;
 
     void processStack(stack<bitset<256>>& stack) const override;
 
