@@ -76,14 +76,14 @@ Contract::Norm2 Contract::normalize1(const vector<uint8_t> bytes){
     unsigned pushCount =0;
     unsigned creationCount=0;
 
-    for(unsigned idx=0;idx<bytes.size();idx++){
+    for(auto idx=0u;idx<bytes.size();idx++){
         const auto& opc = bytes.at(idx);
 
         if(Operation::Opcode::PUSH1<=opc && opc<=Operation::Opcode::PUSH32){
 
             const uint8_t num = opc - (Operation::Opcode::PUSH1-1);
             bitset<256> t(0);
-            for(unsigned j=1;j<=num;j++){
+            for(auto j=1;j<=num;j++){
                 t = (t<<8) | bitset<256>(bytes.at(idx+j));
             }
 
@@ -191,12 +191,12 @@ vector<unique_ptr<BasicBlock<Instruction>>> Contract::abstractStack(
     vector<unique_ptr<BasicBlock<Instruction>>> bbs;
 
     //create empty bbs again as bbs with instructions
-    for(int i=0;i<oldBbs.size();i++){
+    for(auto i=0u;i<oldBbs.size();i++){
         bbs.emplace_back(make_unique<BasicBlock<Instruction>>(i));
     }
 
     //set jump and fallthrough before recursive call, because of merging paths. results in multiple evaluation cycles
-    for(int i=0;i<oldBbs.size();i++){
+    for(auto i=0u;i<oldBbs.size();i++){
         bbs.at(i)->setSuccessorLikeOther(oldBbs.at(i).get(),bbs);
     }
 
@@ -208,7 +208,7 @@ vector<unique_ptr<BasicBlock<Instruction>>> Contract::abstractStack(
     //get predecessors
     vector<vector<unsigned>> predecessors;
     predecessors.resize(bbs.size());
-    for(int i=0;i<bbs.size();i++){
+    for(auto i=0u;i<bbs.size();i++){
         auto bb = bbs.at(i).get();
         if(bb->hasJump()) predecessors.at(bb->getJumpIndex()).emplace_back(i);
         if(bb->hasFallthrough()) predecessors.at(bb->getFallthroughIndex()).emplace_back(i);
@@ -216,7 +216,7 @@ vector<unique_ptr<BasicBlock<Instruction>>> Contract::abstractStack(
 
     //remove empty bbs && jumps
     //due to chaining only adjust the ptr of
-    for(unsigned i=0;i<bbs.size();i++){
+    for(auto i=0u;i<bbs.size();i++){
         auto bb = bbs.at(i).get();
         BasicBlock<Instruction>* newSuccessor;
         if(bb->contentIsEmpty() && bb->hasSuccessorEligibleFallthrough()){
