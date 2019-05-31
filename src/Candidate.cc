@@ -3,12 +3,12 @@
 //using namespace contract;
 
 
-vector<unique_ptr<instr::Instruction>> Candidate::getCopyOfContent() const{
-    std::vector<std::unique_ptr<instr::Instruction>> to;
+vector<unique_ptr<evmbca::Instruction>> Candidate::getCopyOfContent() const{
+    std::vector<std::unique_ptr<evmbca::Instruction>> to;
     to.reserve(content.size());
 
     for (const auto& e : content)
-        to.push_back(std::make_unique<instr::Instruction>(*e));
+        to.push_back(std::make_unique<evmbca::Instruction>(*e));
 
     return to;
 }

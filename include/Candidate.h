@@ -1,5 +1,5 @@
-#ifndef EVAL_CANDIDATE_H
-#define EVAL_CANDIDATE_H
+#ifndef INCLUDE_CANDIDATE_H
+#define INCLUDE_CANDIDATE_H
 
 #include <vector>
 #include <utility>
@@ -27,9 +27,9 @@ public:
     bool predecessorIsJump() { return predecessor<0; }
     bool predecessorIsFallthrough() { return predecessor>0; }
 
-    vector<unique_ptr<instr::Instruction>> getCopyOfContent() const;
+    vector<unique_ptr<evmbca::Instruction>> getCopyOfContent() const;
 
-    void addToContent(unique_ptr<instr::Instruction>&& c){
+    void addToContent(unique_ptr<evmbca::Instruction>&& c){
         content.push_back(move(c));
     }
 
@@ -37,9 +37,9 @@ public:
 
 private:
     const int predecessor;
-    vector<unique_ptr<instr::Instruction>> content;
+    vector<unique_ptr<evmbca::Instruction>> content;
     const stack<pair<unsigned,bitset<256>>> stackIncoming;
 
 };
 
-#endif //EVAL_CANDIDATE_H
+#endif //INCLUDE_CANDIDATE_H

@@ -2,7 +2,7 @@
 #include "Instruction.h"
 #include "Operation.h"
 
-using namespace instr;
+using namespace evmbca;
 
 string Instruction::toDotLabel(const unsigned bbJumpIndex) const{
     stringstream ss;

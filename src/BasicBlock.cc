@@ -1,7 +1,7 @@
 #include <stdexcept>
 #include "BasicBlock.h"
 
-using namespace bb;
+using namespace evmbca;
 
 template<typename T>
 void BasicBlock<T>::setFallthrough(BasicBlock* bb) {
@@ -281,5 +281,5 @@ unsigned BasicBlock<T>::getStatistics() const{
     return content.size();
 }
 
-template class bb::BasicBlock<Operation>;
-template class bb::BasicBlock<Instruction>;
+template class evmbca::BasicBlock<Operation>;
+template class evmbca::BasicBlock<Instruction>;

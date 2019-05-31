@@ -2,8 +2,8 @@
 #include "Operation.h"
 #include "Instruction.h"
 
-using namespace op;
-using namespace instr;
+using namespace evmbca;
+
 //----------------------------------------------------------------------------------------------------------------------
 
 Operation::Operation(uint8_t opc):Operation(opc, [&]{
@@ -205,7 +205,8 @@ bitset<256> Push::getPushValue() const{
     return pushValue;
 }
 
-optional<instr::Instruction> Push::toInstruction(stack<pair<unsigned,bitset<256>>>& stack, unsigned varCount) const{
+optional<evmbca::Instruction> Push::toInstruction(stack<pair<unsigned,bitset<256>>>& stack, unsigned varCount) const{
+    (void)varCount;
     stack.emplace(0,getPushValue());
     return nullopt;
 }
@@ -245,7 +246,8 @@ void Swap::processStack(stack<bitset<256>>& stack) const{
     }
 }
 
-optional<instr::Instruction> Swap::toInstruction(stack<pair<unsigned,bitset<256>>>& stack, unsigned varCount) const {
+optional<evmbca::Instruction> Swap::toInstruction(stack<pair<unsigned,bitset<256>>>& stack, unsigned varCount) const {
+    (void)varCount;
     const unsigned amount = getOpcode() - 0x8e;
     vector<pair<unsigned,bitset<256>>> swapItem;
     swapItem.reserve(amount);
@@ -285,7 +287,8 @@ void Dup::processStack(stack<bitset<256>>& stack) const{
     }
 }
 
-optional<instr::Instruction> Dup::toInstruction(stack<pair<unsigned,bitset<256>>>& stack, unsigned varCount) const{
+optional<evmbca::Instruction> Dup::toInstruction(stack<pair<unsigned,bitset<256>>>& stack, unsigned varCount) const{
+    (void)varCount;
     const unsigned amount = getOpcode() - 0x7f;
     vector<pair<unsigned,bitset<256>>> dupItem;
     //+1 for dup item

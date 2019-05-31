@@ -1,7 +1,7 @@
 #include "Contract.h"
 #include "Candidate.h"
 
-using namespace contract;
+using namespace evmbca;
 
 Contract::Contract(const string& filename) {
     auto bytes = readBytecode(filename);
@@ -57,7 +57,7 @@ vector<uint8_t> Contract::readBytecode(const string& filename){
     } throw invalid_argument("Could not read from "+filename);
 }
 
-Contract::Norm2 Contract::normalize1(const vector<uint8_t> bytes){
+Contract::Norm2 Contract::normalize1(const vector<uint8_t>& bytes){
     Norm2 n2;
 
     //init instruction vector and jumptable -> creation or run
