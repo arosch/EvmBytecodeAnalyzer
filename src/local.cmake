@@ -9,11 +9,11 @@
 set(
     SRC_CC
     src/BasicBlock.cc
-    src/Candidate.cc
     src/Contract.cc
     src/Instruction.cc
     src/Operation.cc
-)
+    src/Stack.cc
+    )
 
 # ---------------------------------------------------------------------------
 # Library

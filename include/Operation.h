@@ -6,12 +6,16 @@
 #include <stack>
 #include <map>
 #include <optional>
+#include <memory>
 
 #include "Instruction.h"
+#include "Stack.h"
 
 using namespace std;
 
 namespace evmbca {
+
+class Stack;
 
 class Operation{
 public:
@@ -155,7 +159,8 @@ public:
     };
 
     explicit Operation(uint8_t opc);
-    Operation(uint8_t opc, tuple<string,uint8_t,uint8_t> evmbca):opcode(static_cast<Opcode>(opc)),mnemonic(get<0>(evmbca)),delta(get<1>(evmbca)),alpha(get<2>(evmbca)) { }
+    Operation(uint8_t opc, tuple<string,uint8_t,uint8_t> evmbca):
+        opcode(static_cast<Opcode>(opc)),mnemonic(get<0>(evmbca)),delta(get<1>(evmbca)),alpha(get<2>(evmbca)) { }
     Operation(const Operation&) = delete;
 
     virtual uint8_t getOpcode() const { return opcode;}
@@ -166,7 +171,7 @@ public:
 
     virtual bool isAJumpInstruction() { return opcode==0x56 || opcode==0x57; }
 
-    virtual optional<evmbca::Instruction> toInstruction(stack<pair<unsigned,bitset<256>>>& stack, unsigned varCount) const;
+    virtual std::unique_ptr<Instruction> toInstruction(Stack& stack, unsigned& kvar) const;
 
     virtual string toString() const { return getMnemonic(); }
 
@@ -192,7 +197,7 @@ public:
 
     bitset<256> getPushValue() const override;
 
-    optional<evmbca::Instruction> toInstruction(stack<pair<unsigned,bitset<256>>>& stack, unsigned varCount) const override;
+    std::unique_ptr<Instruction> toInstruction(Stack& stack, unsigned& kvar) const override;
     string toString() const override;
 
     void processStack(stack<bitset<256>>& stack) const override;
@@ -209,7 +214,7 @@ public:
 
     void processStack(stack<bitset<256>>& stack) const override;
 
-    optional<evmbca::Instruction> toInstruction(stack<pair<unsigned,bitset<256>>>& stack, unsigned varCount) const override;
+    std::unique_ptr<Instruction> toInstruction(Stack& stack, unsigned& kvar) const override;
 };
 
 //------------------------------------------------------------------------------------------------------------------
@@ -220,7 +225,7 @@ public:
 
     void processStack(stack<bitset<256>>& stack) const override;
 
-    optional<evmbca::Instruction> toInstruction(stack<pair<unsigned,bitset<256>>>& stack, unsigned varCount) const override;
+    std::unique_ptr<Instruction> toInstruction(Stack& stack, unsigned& kvar) const override;
 };
 
 } // namespace evmbca

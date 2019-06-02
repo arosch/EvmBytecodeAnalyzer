@@ -1,5 +1,5 @@
+#include <algorithm>
 #include "Contract.h"
-#include "Candidate.h"
 
 using namespace evmbca;
 
@@ -160,11 +160,11 @@ vector<unique_ptr<BasicBlock<Operation>>> Contract::normalize2(vector<unique_ptr
         if(bbendInstr.find(opc)!=bbendInstr.end() || ((*next(it,1))->getOpcode()==Operation::Opcode::JUMPDEST)){
             //found end of bb: next op is a new bb
 
-            auto prev = bbs.back().get();
+            const auto prev = bbs.back().get();
 
             //create the new bb
             bbs.emplace_back(make_unique<BasicBlock<Operation>>(bbIdx++));
-            //only if JUMPDEST is it a viable jump destination
+            //only if JUMPDEST is a viable jump destination
             jumpDst.emplace(instrIdx,bbs.back().get());
 
             if(prev->needsFallthrough())
@@ -179,62 +179,35 @@ vector<unique_ptr<BasicBlock<Operation>>> Contract::normalize2(vector<unique_ptr
 }
 
 vector<unique_ptr<BasicBlock<Instruction>>> Contract::abstractStack(
-        const vector<unique_ptr<BasicBlock<Operation>>> &oldBbs) const{
+        const vector<unique_ptr<BasicBlock<Operation>>>& bbos) const{
 
-    map<unsigned,BasicBlock<Operation>*> operations;
-    map<unsigned,unsigned> indexMatch;
-    for(const auto& bb:oldBbs){
-        operations.emplace(bb->getIndex(),bb.get());
-        indexMatch.emplace(bb->getIndex(),bb->getIndex());
-    }
-
-    vector<unique_ptr<BasicBlock<Instruction>>> bbs;
+    const auto nbbs = bbos.size();
 
     //create empty bbs again as bbs with instructions
-    for(auto i=0u;i<oldBbs.size();i++){
-        bbs.emplace_back(make_unique<BasicBlock<Instruction>>(i));
+    vector<unique_ptr<BasicBlock<Instruction>>> bbis;
+    bbis.reserve(nbbs);
+
+    //indicates, whether each bb already instantiated(processed)
+    vector<bool> abstracted;
+    abstracted.reserve(nbbs);
+
+    //the state of the stack after the respective bb
+    vector<Stack> endStacks(nbbs);
+
+    //initialize
+    for(auto i=0u;i<nbbs;i++){
+        bbis.emplace_back(make_unique<BasicBlock<Instruction>>(i));
+        abstracted.emplace_back(false);
     }
 
-    //set jump and fallthrough before recursive call, because of merging paths. results in multiple evaluation cycles
-    for(auto i=0u;i<oldBbs.size();i++){
-        bbs.at(i)->setSuccessorLikeOther(oldBbs.at(i).get(),bbs);
+    for(auto i=0u;i<nbbs;i++){
+        bbis.at(i)->setSuccessorLikeOther(bbos.at(i).get(),bbis);
     }
 
-    stack<pair<unsigned,bitset<256>>> stack;
-    map<unsigned,Candidate> candidates;
-
-    bbs.front()->instantiate(stack, 0, 1, bbs, candidates, operations, indexMatch);
-
-    //get predecessors
-    vector<vector<unsigned>> predecessors;
-    predecessors.resize(bbs.size());
-    for(auto i=0u;i<bbs.size();i++){
-        auto bb = bbs.at(i).get();
-        if(bb->hasJump()) predecessors.at(bb->getJumpIndex()).emplace_back(i);
-        if(bb->hasFallthrough()) predecessors.at(bb->getFallthroughIndex()).emplace_back(i);
+    unsigned kvar = 1;
+    for(const auto& bbo:bbos){
+        bbo->abstract(bbis,abstracted,kvar,endStacks);
     }
 
-    //remove empty bbs && jumps
-    //due to chaining only adjust the ptr of
-    for(auto i=0u;i<bbs.size();i++){
-        auto bb = bbs.at(i).get();
-        BasicBlock<Instruction>* newSuccessor;
-        if(bb->contentIsEmpty() && bb->hasSuccessorEligibleFallthrough()){
-            newSuccessor = bb->getFallthrough();
-        } else if(bb->isAJumpOnlyBb() && bb->hasSuccessorEligibleJump()){
-            newSuccessor = bb->getJump();
-        } else {
-            //nothing to remove..
-            continue;
-        }
-
-        //remove this bb by assigning successor to eligible predecessor
-        for(auto& p:predecessors.at(i)){
-            bbs.at(p)->assignSuccessorToEligiblePredecessor(bb->getIndex(), newSuccessor, predecessors,bbs);
-        }
-
-        //actually remove it from vector?
-    }
-
-    return bbs;
+    return bbis;
 }

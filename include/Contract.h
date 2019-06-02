@@ -71,7 +71,7 @@ private:
     vector<unique_ptr<BasicBlock<Operation>>> normalize2(vector<unique_ptr<Operation>> &&instrs,
                                                  map<uint64_t, uint64_t> &jumptable);
 
-    vector<unique_ptr<BasicBlock<Instruction>>> abstractStack(const vector<unique_ptr<BasicBlock<Operation>>>& oldBbs) const;
+    vector<unique_ptr<BasicBlock<Instruction>>> abstractStack(const vector<unique_ptr<BasicBlock<Operation>>>& bbos) const;
 
     bool creation;
     vector<unique_ptr<BasicBlock<Operation>>> creationHead;

@@ -13,7 +13,6 @@
 
 #include "Operation.h"
 #include "Instruction.h"
-#include "Candidate.h"
 
 using namespace std;
 
@@ -64,13 +63,13 @@ public:
         return nextJump;
     }
 
-    //void setContent(vector<unique_ptr<T>>&& c);
-
     bool contentIsEmpty() const{ return content.empty(); }
 
     bool isAJumpOnlyBb() const;
 
     void setSuccessorLikeOther(BasicBlock<Operation>* other, vector<unique_ptr<BasicBlock<Instruction>>>& successors);
+
+    void addPredecessor(BasicBlock<T>* p);
 
     void addInstruction(unique_ptr<T>&& instr);
 
@@ -83,26 +82,27 @@ public:
     void adjustJumpPtr(stack<bitset<256>> stack, const map<uint64_t, BasicBlock *> &jumpDst,
                        const map<uint64_t, uint64_t> &jumptable);
 
-    unsigned instantiate(stack<pair<unsigned, bitset<256>>> stack,
-                         const int predecessor,
-                         const unsigned varIndex,
-                         vector<unique_ptr<BasicBlock<Instruction>>> &bbs,
-                         map<unsigned, Candidate> &candidates,
-                         map<unsigned, BasicBlock<Operation> *> &operations,
-                         map<unsigned, unsigned> &indexMatch);
+    bool requiresMerge() const;
 
-    void assignSuccessorToEligiblePredecessor(unsigned successorIndex,BasicBlock<Instruction>* newSuccessor, vector<vector<unsigned>>& predecessors, vector<unique_ptr<BasicBlock<Instruction>>>& bbs);
+    void abstract(vector<unique_ptr<BasicBlock<Instruction>>>& bbis,
+                  vector<bool>& abstractedinstantiated,
+                  unsigned& kvar,
+                  vector<Stack>& endStacks);
+
+    //void assignSuccessorToEligiblePredecessor(unsigned successorIndex,BasicBlock<Instruction>* newSuccessor, vector<vector<unsigned>>& predecessors, vector<unique_ptr<BasicBlock<Instruction>>>& bbs);
 
     unsigned printBbDot(ofstream& ostrm, const unsigned firstNodeId) const;
     void printBbDotDependencies(ofstream &ostrm, const vector<unsigned>& firstNodes, const vector<unsigned>& lastNodes) const;
 
     unsigned getStatistics() const;
 
-    vector<unique_ptr<T>> content;
 private:
     const unsigned index;
+    vector<unique_ptr<T>> content;
     BasicBlock* nextJump;
     BasicBlock* nextFallthrough;
+
+    vector<BasicBlock*> predecessors;
 };
 
 } // namespace evmbca

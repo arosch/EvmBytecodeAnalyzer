@@ -1,26 +1,18 @@
 #include <sstream>
 #include "Instruction.h"
-#include "Operation.h"
 
 using namespace evmbca;
 
-bool Instruction::operator==(const Instruction& other) const {
-    auto equal = (opcode==other.opcode)
-                 && (mnemonic==other.mnemonic)
-                 && (delta==other.delta)
-                 && (alpha==other.alpha)
-                 && (variable==other.variable);
-    unsigned index=0;
-    for(const auto& p:params){
-        equal &= p.first==other.params.at(index).first;
-        equal &= p.second==other.params.at(index).second;
-        index++;
-    }
-    return equal;
+void Instruction::setVariable(const unsigned var){
+    variable = var;
 }
 
-string Instruction::toString() const {
-    stringstream ss;
+unsigned Instruction::getVariable() const{
+    return variable;
+}
+
+std::string Instruction::toString() const {
+    std::stringstream ss;
 
     if(alpha==1){
         ss<<"v"<<variable<<" := ";
@@ -28,21 +20,16 @@ string Instruction::toString() const {
 
     ss<<mnemonic<<"(";
 
-    for(const auto& p:params){
-        //0 indicates a push value
-        if(p.first == 0){
-            try{
-                auto v = p.second.to_ullong();
-                ss<<v;
-            } catch(const overflow_error& e){
-                ss<<"BIGWORD";
-
-                //ss<<p.second.to_string();
-            }
-        } else {
-            ss<<"v"<<p.first;
+    if(opcode>=0x60 && opcode<=0x7f){
+        try{
+            ss<<value.to_ullong();
+        } catch(const std::overflow_error& e){
+            ss<<"BIGWORD";
         }
-        ss<<",";
+    } else {
+        for(const auto& p:params){
+            ss<<"v"<<p->getVariable()<<",";
+        }
     }
 
     auto s = ss.str();

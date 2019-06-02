@@ -1,6 +1,5 @@
 #include <stdexcept>
 #include "Operation.h"
-#include "Instruction.h"
 
 using namespace evmbca;
 
@@ -174,29 +173,25 @@ void Operation::processStack(stack<bitset<256>>& stack) const{
 
 }
 
-optional<Instruction> Operation::toInstruction(stack<pair<unsigned,bitset<256>>>& stack, unsigned varCount) const{
+std::unique_ptr<Instruction> Operation::toInstruction(Stack& stack, unsigned& kvar) const{
+    const auto items = stack.retrieveN(delta);
 
-    vector<pair<unsigned,bitset<256>>> stackItems;
+    //TODO single if & processStack revamp?
+    unsigned var ;
+    if(alpha==1) var = kvar++;
+    else var = 0;
 
-    //pop
-    for(unsigned i=0;i<delta;i++){
-        stackItems.push_back(stack.top());
-        stack.pop();
-    }
+    auto instr = make_unique<Instruction>(opcode,mnemonic,delta,alpha,items,var);
 
-    if(alpha==1) {
-        stack.emplace(varCount, 0);
-    } else {
-        //instructions that don't put anything on stack
-        varCount=0;
-    }
+    if(alpha==1) stack.emplace(instr.get());
 
+    //filter specific instructions
     if(opcode == Opcode::POP)
-        return nullopt;
+        return std::unique_ptr<Instruction>(nullptr);
     else if(opcode == Opcode::JUMPDEST)
-        return nullopt;
+        return std::unique_ptr<Instruction>(nullptr);
 
-    return Instruction(opcode,mnemonic,delta,alpha,stackItems,varCount);
+    return instr;
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -205,10 +200,11 @@ bitset<256> Push::getPushValue() const{
     return pushValue;
 }
 
-optional<evmbca::Instruction> Push::toInstruction(stack<pair<unsigned,bitset<256>>>& stack, unsigned varCount) const{
-    (void)varCount;
-    stack.emplace(0,getPushValue());
-    return nullopt;
+std::unique_ptr<Instruction> Push::toInstruction(Stack& stack, unsigned& kvar) const {
+    auto instr = make_unique<Instruction>(getOpcode(),getMnemonic(),getDelta(),getAlpha(),kvar,getPushValue());
+    stack.emplace(instr.get());
+    kvar++;
+    return instr;
 }
 
 string Push::toString() const{
@@ -242,23 +238,21 @@ void Swap::processStack(stack<bitset<256>>& stack) const{
     }
 }
 
-optional<evmbca::Instruction> Swap::toInstruction(stack<pair<unsigned,bitset<256>>>& stack, unsigned varCount) const {
-    (void)varCount;
-    const unsigned amount = getOpcode() - 0x8e;
-    vector<pair<unsigned,bitset<256>>> swapItem;
-    swapItem.reserve(amount);
+std::unique_ptr<Instruction> Swap::toInstruction(Stack& stack, unsigned& kvar) const {
+    (void)kvar;
 
-    for(unsigned i=0;i<amount;i++){
-        swapItem.push_back(stack.top());
-        stack.pop();
-    }
+    const unsigned amount = getOpcode() - 0x8e;
+    auto items = stack.retrieveN(amount);
+
     //swap first with last element
-    iter_swap(swapItem.begin(),swapItem.rbegin());
+    iter_swap(items.begin(),items.rbegin());
+
     //push back onto the stack
-    for(auto it=swapItem.rbegin();it!=swapItem.rend();it++){
+    for(auto it=items.rbegin();it!=items.rend();it++){
         stack.push(*it);
     }
-    return nullopt;
+
+    return unique_ptr<Instruction>(nullptr);
 }
 
 //----------------------------------------------------------------------------------------------------------------------
@@ -283,24 +277,16 @@ void Dup::processStack(stack<bitset<256>>& stack) const{
     }
 }
 
-optional<evmbca::Instruction> Dup::toInstruction(stack<pair<unsigned,bitset<256>>>& stack, unsigned varCount) const{
-    (void)varCount;
+std::unique_ptr<Instruction> Dup::toInstruction(Stack& stack, unsigned& kvar) const {
+    (void)kvar;
     const unsigned amount = getOpcode() - 0x7f;
-    vector<pair<unsigned,bitset<256>>> dupItem;
-    //+1 for dup item
-    dupItem.reserve(amount+1);
-    //dummy holder for dup item
-    dupItem.emplace_back(0,0);
+    auto items = stack.retrieveN(amount);
 
-    for(unsigned i=0;i<amount;i++){
-        dupItem.push_back(stack.top());
-        stack.pop();
-    }
     //duplicate last item to the front
-    dupItem.at(0)=dupItem.back();
+    items.insert(items.begin(),items.back());
+
     //push back onto the stack
-    for(auto it=dupItem.rbegin();it!=dupItem.rend();it++){
-        stack.push(*it);
-    }
-    return nullopt;
+    stack.pushN(items);
+
+    return unique_ptr<Instruction>(nullptr);
 }

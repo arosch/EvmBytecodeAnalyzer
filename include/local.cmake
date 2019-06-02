@@ -9,9 +9,9 @@
 set(
     INCLUDE_H
     include/BasicBlock.h
-    include/Candidate.h
     include/Contract.h
     include/Instruction.h
     include/Operation.h
+    include/Stack.h
 )
 
