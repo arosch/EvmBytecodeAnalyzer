@@ -34,24 +34,20 @@ public:
     explicit Contract(const string& filename);
 
     void retrieveCfgCreation(const string& fout) const{
-        printToDotFile(fout,bbos_creation);
+        writeStatstics("Creation",creationHead);
+        printToDotFile(fout,creationHead);
     }
 
     void retrieveCfgRuntime(const string& fout) const{
-        printToDotFile(fout,bbos_runtime);
+        writeStatstics("Runtime", runtimeHead);
+        printToDotFile(fout,runtimeHead);
     }
 
     void retrieveCfgOptimizedRuntime(const string& fout) const{
-        printToDotFile(fout,bbis_runtime);
+        auto result = abstractStack(runtimeHead);
+        writeStatstics("Optimized", result);
+        printToDotFile(fout,result);
     }
-
-    void writeStatistics() const{
-        if(!bbos_creation.empty()) writeStatstics("Creation",bbos_creation);
-        if(!bbos_runtime.empty()) writeStatstics("Runtime",bbos_runtime);
-        if(!bbis_runtime.empty()) writeStatstics("Abstract",bbis_runtime);
-    }
-
-private:
 
     template<typename T>
     void printToDotFile(const string& fout, const vector<unique_ptr<BasicBlock<T>>>& bbs) const;
@@ -59,6 +55,7 @@ private:
     template<typename T>
     void writeStatstics(const string& label, const vector<unique_ptr<BasicBlock<T>>>& bbs) const;
 
+private:
     ///ignores the first three lines of given ifstream
     bool isCreationAndPrep(ifstream &istrm) const;
 
@@ -77,9 +74,8 @@ private:
     vector<unique_ptr<BasicBlock<Instruction>>> abstractStack(const vector<unique_ptr<BasicBlock<Operation>>>& bbos) const;
 
     bool creation;
-    vector<unique_ptr<BasicBlock<Operation>>> bbos_creation;
-    vector<unique_ptr<BasicBlock<Operation>>> bbos_runtime;
-    vector<unique_ptr<BasicBlock<Instruction>>> bbis_runtime;
+    vector<unique_ptr<BasicBlock<Operation>>> creationHead;
+    vector<unique_ptr<BasicBlock<Operation>>> runtimeHead;
     vector<uint8_t> auxdata;
 };
 
@@ -93,12 +89,12 @@ void Contract::writeStatstics(const string& label, const vector<unique_ptr<Basic
         countInstr += bb->getStatistics();
         if(!bb->contentIsEmpty() || !bb->isAJumpOnlyBb()) countBb++;
     }
-    cout<<label <<" \t| Number of instructions: "<<countInstr<< " \t| Number of basic blocks: "<<countBb<<'\n';
+    cout<<label <<" | Number of instructions: "<<countInstr<< " | Number of basic blocks: "<<countBb<<'\n';
 }
 
 template<typename T>
 void Contract::printToDotFile(const string& fout, const vector<unique_ptr<BasicBlock<T>>>& bbs) const{
-    //cout<<"Printing cfg to: "<<fout<<"...\n";
+    cout<<"Printing cfg to: "<<fout<<"...\n";
 
     if (ofstream ostrm{fout, ios::binary}) {
         ostrm << "digraph G{\n";

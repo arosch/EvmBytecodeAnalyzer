@@ -5,10 +5,10 @@ using namespace evmbca;
 
 Contract::Contract(const string& filename) {
     auto bytes = readBytecode(filename);
+
     Norm2 n2 = normalize1(move(bytes));
-    bbos_creation = normalize2(move(n2.instrsCreation), n2.jumptableCreation);
-    bbos_runtime = normalize2(move(n2.instrsRun), n2.jumptableRun);
-    bbis_runtime = abstractStack(bbos_runtime);
+    creationHead = normalize2(move(n2.instrsCreation), n2.jumptableCreation);
+    runtimeHead = normalize2(move(n2.instrsRun), n2.jumptableRun);
 };
 
 bool Contract::isCreationAndPrep(ifstream &istrm) const {
@@ -117,9 +117,8 @@ Contract::Norm2 Contract::normalize1(const vector<uint8_t>& bytes){
         }
     }
 
-    //Put in statistics?
-    //cout<<"Bytes in creation code : "<<creationCount<<'\n';
-    //cout<<"Bytes in runtime code : "<<bytes.size()-creationCount<<'\n';
+    cout<<"Bytes in creation code : "<<creationCount<<'\n';
+    cout<<"Bytes in runtime code : "<<bytes.size()-creationCount<<'\n';
 
     //remove invalid if last (and unreachable?)
     if(instrs->back()->getOpcode()==Operation::Opcode::INVALID){

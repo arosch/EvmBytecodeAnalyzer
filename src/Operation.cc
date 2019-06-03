@@ -154,7 +154,7 @@ bitset<256> Operation::getPushValue() const{
     throw logic_error("Trying to get a push value from a non push instruction");
 }
 
-void Operation::processStack(stack<bitset<256>>& stack) const {
+void Operation::processStack(stack<bitset<256>>& stack) const{
 
     const unsigned pop = delta;
     const unsigned push = alpha;
@@ -173,7 +173,7 @@ void Operation::processStack(stack<bitset<256>>& stack) const {
 
 }
 
-std::unique_ptr<Instruction> Operation::toInstruction(Stack& stack, unsigned& kvar) const {
+std::unique_ptr<Instruction> Operation::toInstruction(Stack& stack, unsigned& kvar) const{
     const auto items = stack.retrieveN(delta);
 
     //TODO single if & processStack revamp?
