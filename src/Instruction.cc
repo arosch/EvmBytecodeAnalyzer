@@ -18,18 +18,23 @@ std::string Instruction::toString() const {
         ss<<"v"<<variable<<" := ";
     }
 
-    ss<<mnemonic<<"(";
-
     if(opcode>=0x60 && opcode<=0x7f){
         try{
             ss<<value.to_ullong();
         } catch(const std::overflow_error& e){
             ss<<"BIGWORD";
         }
+        return ss.str();
     } else {
-        for(const auto& p:params){
-            ss<<"v"<<p->getVariable()<<",";
+        const char* separator = "";
+        ss<<mnemonic<<"(";
+	    for(auto i=0u;i<params.size();++i){
+            ss<<separator<<"v"<<params.at(i)->getVariable();
+            separator=",";
         }
+	    ss<<")";
+	    return ss.str();
+
     }
 
     auto s = ss.str();
