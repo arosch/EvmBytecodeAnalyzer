@@ -34,11 +34,5 @@ std::string Instruction::toString() const {
         }
 	    ss<<")";
 	    return ss.str();
-
     }
-
-    auto s = ss.str();
-    if(!params.empty()) s.pop_back();
-    s.append(")");
-    return s;
 }
